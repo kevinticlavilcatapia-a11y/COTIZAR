@@ -89,7 +89,7 @@
     <div class="flex-grow relative">
         
         <!-- Loading Indicator -->
-        <div id="loading-overlay" class="absolute inset-0 bg-white/90 z-[60] flex items-center justify-center backdrop-blur-sm">
+        <div id="loading-overlay" class="absolute inset-0 bg-white/90 z-[60] flex items-center justify-center backdrop-blur-sm hidden">
             <div class="text-center">
                 <i class="fas fa-circle-notch fa-spin text-4xl text-teal-600 mb-3"></i>
                 <p class="text-sm font-semibold text-gray-600">Sincronizando Sistema...</p>
@@ -374,6 +374,7 @@
             if (user) {
                 userId = user.uid;
                 subscribeToData();
+                document.getElementById('loading-overlay').classList.add('hidden');
             }
         });
 
@@ -425,7 +426,6 @@
         window.fsSaveProposal = async (data) => {
             if(!userId) { Swal.fire('Error', 'No autenticado', 'error'); return; }
             let isUpdate = false;
-            // Check if ID is a valid Firestore ID string (usually ~20 chars) vs timestamp
             if(data.id && data.id.toString().length > 15) {
                if(window.savedProposals.some(p => p.id === data.id)) isUpdate = true;
             }
@@ -473,7 +473,6 @@
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const base64 = e.target.result;
-                    // Check size limit (approx 800KB to be safe for firestore doc limit of 1MB)
                     if(base64.length > 800000) {
                         alert("Imagen muy grande. Use imágenes menores a 500KB.");
                         input.value = "";
@@ -586,7 +585,6 @@
             document.getElementById('arrivalDate').valueAsDate = new Date();
             const d = new Date(); d.setDate(d.getDate()+4);
             document.getElementById('departureDate').valueAsDate = d;
-            // Initial empty check handled by firebase callback
             if(document.getElementById('hotel-options-wrapper').children.length===0) window.addOptionGroup();
         });
 
@@ -645,8 +643,6 @@
             document.getElementById('tours-total-display').innerText = `S/.${total.toFixed(2)}`;
         }
 
-        // --- NEW OPTION GROUP LOGIC (LOCATIONS + ROOM MARGIN) ---
-        
         window.populateLocationSelect = (select) => {
             const zones = [...new Set(window.catalogHotels.map(h => h.zone))];
             select.innerHTML = '<option value="">-- Ubicación --</option>' + zones.map(z => `<option value="${z}">${z}</option>`).join('');
@@ -662,7 +658,7 @@
                 const hotels = window.catalogHotels.filter(h => h.zone === loc);
                 hotelSelect.innerHTML += hotels.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
             }
-            window.updateAddRoomSelect(hotelSelect); // Reset rooms
+            window.updateAddRoomSelect(hotelSelect); 
         }
 
         window.addOptionGroup = () => {
@@ -678,10 +674,8 @@
                     <button onclick="this.closest('.option-card').remove()" class="text-red-400 text-xs"><i class="fas fa-trash"></i></button>
                 </div>
                 
-                <!-- LISTA DE SEGMENTOS -->
                 <div class="hotel-segments-container space-y-2 mb-3"></div>
 
-                <!-- FORMULARIO AGREGAR (FILTRADO) -->
                 <div class="bg-white p-3 rounded border border-dashed border-gray-300">
                     <p class="text-[10px] font-bold text-gray-400 uppercase mb-2">Agregar Alojamiento</p>
                     
@@ -708,11 +702,11 @@
 
                     <div class="grid grid-cols-2 gap-2 mb-2 bg-gray-50 p-2 rounded">
                         <div>
-                            <label class="text-[9px] text-gray-500 font-bold">Costo Neto</label>
+                            <label class="text-[9px] text-gray-500 font-bold">Costo Neto (x Noche)</label>
                             <input type="text" class="text-xs bg-transparent border-none p-0 w-full font-mono text-gray-600 add-net-display" value="S/.0" readonly>
                         </div>
                         <div>
-                            <label class="text-[9px] text-gray-500 font-bold">Ganancia (MG)</label>
+                            <label class="text-[9px] text-gray-500 font-bold">Ganancia (x Noche/Hab)</label>
                             <input type="number" class="form-input text-xs py-0 h-6 w-full add-margin" value="20" placeholder="S/." onchange="window.calculateSegmentPreview(this)">
                         </div>
                         <div class="col-span-2 border-t border-gray-200 pt-1 mt-1 flex justify-between items-center">
@@ -734,12 +728,9 @@
             const wrapper = hotelSelect.closest('div');
             const roomSelect = wrapper.querySelector('.add-room-select');
             const hotelId = hotelSelect.value;
-            
             roomSelect.innerHTML = '<option value="">-- Habitaciones --</option>'; 
             roomSelect.disabled = true;
-
             if(!hotelId) return;
-
             const hotel = window.catalogHotels.find(h => h.id == hotelId);
             if(hotel && hotel.rooms && hotel.rooms.length > 0) {
                 roomSelect.disabled = false;
@@ -755,35 +746,33 @@
         }
 
         window.calculateSegmentPreview = (elem) => {
-            const wrapper = elem.closest('.bg-white'); // The inner form container
+            const wrapper = elem.closest('.bg-white');
             const roomSelect = wrapper.querySelector('.add-room-select');
             const qty = parseInt(wrapper.querySelector('.add-qty').value) || 1;
             const nights = parseInt(wrapper.querySelector('.add-nights').value) || 1;
-            const margin = parseFloat(wrapper.querySelector('.add-margin').value) || 0;
+            const marginPerNight = parseFloat(wrapper.querySelector('.add-margin').value) || 0;
             
-            let netTotal = 0;
+            let pricePerNight = 0;
             if (roomSelect.selectedIndex > 0) {
-                const pricePerNight = parseFloat(roomSelect.options[roomSelect.selectedIndex].dataset.price) || 0;
-                netTotal = pricePerNight * nights * qty;
+                pricePerNight = parseFloat(roomSelect.options[roomSelect.selectedIndex].dataset.price) || 0;
             }
 
-            const saleTotal = netTotal + margin;
+            // Calculation: (Price Per Night + Margin Per Night) * Nights * Quantity Rooms
+            const saleTotal = (pricePerNight + marginPerNight) * nights * qty;
 
-            wrapper.querySelector('.add-net-display').value = `S/.${netTotal.toFixed(2)}`;
+            wrapper.querySelector('.add-net-display').value = `S/.${pricePerNight.toFixed(2)}`;
             wrapper.querySelector('.add-total-display').innerText = `S/.${saleTotal.toFixed(2)}`;
         }
 
         window.commitHotelSegment = (btn) => {
-            const wrapper = btn.closest('.bg-white'); // form container
+            const wrapper = btn.closest('.bg-white');
             const card = btn.closest('.option-card');
             const container = card.querySelector('.hotel-segments-container');
-
             const hotelSelect = wrapper.querySelector('.add-hotel-select');
             const roomSelect = wrapper.querySelector('.add-room-select');
             const qty = parseInt(wrapper.querySelector('.add-qty').value) || 1;
             const nights = parseInt(wrapper.querySelector('.add-nights').value) || 1;
-            const margin = parseFloat(wrapper.querySelector('.add-margin').value) || 0;
-
+            const marginPerNight = parseFloat(wrapper.querySelector('.add-margin').value) || 0;
             const hotelId = hotelSelect.value;
             const roomIdx = roomSelect.value;
             
@@ -791,12 +780,14 @@
 
             const hotel = window.catalogHotels.find(h => h.id == hotelId);
             const room = hotel.rooms[roomIdx];
-            const netTotal = room.price * qty * nights;
-            const saleTotal = netTotal + margin;
+            
+            // Core Calculation for Segment
+            const netTotal = room.price * nights * qty;
+            const saleTotal = (room.price + marginPerNight) * nights * qty;
 
             const div = document.createElement('div');
             div.className = "bg-white border border-gray-200 p-2 rounded relative shadow-sm segment-row";
-            div.dataset.sellTotal = saleTotal; // Store Final Sale Price for summing
+            div.dataset.sellTotal = saleTotal; 
             
             div.innerHTML = `
                 <button onclick="this.closest('.segment-row').remove(); window.updateOptionTotals(this)" class="absolute top-1 right-1 text-red-400 text-xs">x</button>
@@ -806,26 +797,27 @@
                     <div class="text-[10px] bg-gray-100 px-1 rounded">${qty} Hab. x ${nights} Ns</div>
                     <div class="text-xs font-bold text-teal-700">Venta: S/.${saleTotal.toFixed(2)}</div>
                 </div>
-                <!-- Data for saving/restoring -->
                 <input type="hidden" class="seg-hotel-id" value="${hotel.id}">
                 <input type="hidden" class="seg-room-name" value="${room.name}">
                 <input type="hidden" class="seg-qty" value="${qty}">
                 <input type="hidden" class="seg-nights" value="${nights}">
                 <input type="hidden" class="seg-net" value="${room.price}">
-                <input type="hidden" class="seg-margin" value="${margin}">
+                <input type="hidden" class="seg-margin" value="${marginPerNight}">
             `;
             container.appendChild(div);
             window.updateOptionTotals(btn);
-            
-            // Reset form partly? No, keep values for ease of adding similar rooms
         }
 
         window.updateOptionTotals = (elem) => {
             const card = elem.closest('.option-card');
             if(!card) return;
-            let totalSell = 0;
-            card.querySelectorAll('.segment-row').forEach(row => { totalSell += parseFloat(row.dataset.sellTotal)||0; });
-            card.querySelector('.option-total-display').innerText = `S/.${totalSell.toFixed(2)}`;
+            const pax = parseInt(document.getElementById('pax').value) || 1;
+            let totalSellGroup = 0;
+            card.querySelectorAll('.segment-row').forEach(row => { totalSellGroup += parseFloat(row.dataset.sellTotal)||0; });
+            
+            // Display Total Per Person for the Accommodation part
+            const totalSellPP = totalSellGroup / pax;
+            card.querySelector('.option-total-display').innerText = `S/.${totalSellPP.toFixed(2)}`;
         }
 
         window.renderCatalogTables = () => {
@@ -864,7 +856,7 @@
 
         // --- DATA COLLECTION ---
         window.getProposalData = () => {
-            const pax = document.getElementById('pax').value;
+            const pax = parseInt(document.getElementById('pax').value) || 1;
             const arrival = document.getElementById('arrivalDate').value;
             const departure = document.getElementById('departureDate').value;
             const client = document.getElementById('clientName').value;
@@ -883,13 +875,13 @@
 
             const options = [];
             document.querySelectorAll('.option-card').forEach((card, i) => {
-                let totalOptionSell = 0;
+                let totalOptionSellGroup = 0;
                 let segmentsHtml = '';
                 const segments = []; 
                 
                 card.querySelectorAll('.segment-row').forEach(row => {
                     const sellTotal = parseFloat(row.dataset.sellTotal);
-                    totalOptionSell += sellTotal;
+                    totalOptionSellGroup += sellTotal;
                     
                     const hId = row.querySelector('.seg-hotel-id').value;
                     const rName = row.querySelector('.seg-room-name').value;
@@ -915,8 +907,14 @@
                     segments.push({id: hId, room: rName, qty, nights: n, netPrice: net, margin: margin});
                 });
 
-                const grandTotalPP = totalOptionSell + totalToursVenta;
-                const grandTotalGroup = grandTotalPP * pax;
+                // Calculate Per Person Prices correctly
+                // OptionSellGroup is total cost of rooms.
+                // ToursVenta is Per Person.
+                // Total Group = OptionSellGroup + (ToursVenta * Pax)
+                // Total PP = (OptionSellGroup / Pax) + ToursVenta
+                
+                const grandTotalGroup = totalOptionSellGroup + (totalToursVenta * pax);
+                const grandTotalPP = grandTotalGroup / pax;
 
                 options.push({
                     letter: String.fromCharCode(65 + i),
@@ -1013,13 +1011,15 @@
                 p.options.forEach(opt => {
                     window.addOptionGroup();
                     const card = document.getElementById('hotel-options-wrapper').lastElementChild;
+                    // No top-level margin loading needed as it is per segment now
                     const container = card.querySelector('.hotel-segments-container');
                     if(opt.segments) {
                         opt.segments.forEach(seg => {
                             const div = document.createElement('div');
                             div.className = "bg-white border border-gray-200 p-2 rounded relative shadow-sm segment-row";
+                            // Recalculate based on saved margin logic
                             const netTotal = seg.netPrice * seg.qty * seg.nights;
-                            const saleTotal = netTotal + parseFloat(seg.margin||0);
+                            const saleTotal = (seg.netPrice + (parseFloat(seg.margin)||0)) * seg.qty * seg.nights;
                             div.dataset.sellTotal = saleTotal;
                             const hotel = window.catalogHotels.find(h=>h.id==seg.id);
                             const hotelName = hotel?.name || "Hotel Guardado";
@@ -1033,7 +1033,7 @@
                             container.appendChild(div);
                         });
                     }
-                    window.updateOptionTotals(card.querySelector('.add-hotel-select')); // Any element inside card works
+                    window.updateOptionTotals(card.querySelector('.add-hotel-select')); 
                 });
             }
             window.switchView('cotizacion');
