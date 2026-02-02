@@ -280,6 +280,10 @@
                                     <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Wifi"><span class="text-xs text-gray-600">Wifi</span></label>
                                     <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Cochera"><span class="text-xs text-gray-600">Cochera</span></label>
                                 </div>
+                                <div class="mt-2 flex gap-1 border-t border-gray-100 pt-2">
+                                    <input type="text" id="customAmenityInput" class="form-input text-xs py-1 h-7 flex-grow" placeholder="Otro servicio...">
+                                    <button onclick="window.addCustomAmenity()" class="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-300 font-bold">+</button>
+                                </div>
                             </div>
                         </div>
 
@@ -491,7 +495,27 @@
         }
         window.toggleForm = (id) => { document.getElementById(id).classList.toggle('hidden'); }
 
-        // --- CATALOGO HOTELES ---
+        // --- CATALOGO HOTELES (ADD AMENITY) ---
+        window.addCustomAmenity = (val = null) => {
+            const input = document.getElementById('customAmenityInput');
+            const text = val || input.value.trim();
+            if(!text) return;
+            
+            const container = document.getElementById('amenities-checkbox-container');
+            // Check if exists
+            if(Array.from(container.querySelectorAll('input')).some(i => i.value.toLowerCase() === text.toLowerCase())) {
+                if(!val) alert('Ya existe');
+                return;
+            }
+
+            const label = document.createElement('label');
+            label.className = "flex items-center space-x-2 cursor-pointer";
+            label.innerHTML = `<input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="${text}" checked><span class="text-xs text-gray-600">${text}</span>`;
+            container.appendChild(label);
+            
+            if(!val) input.value = '';
+        }
+
         window.addRoomInputRow = (name='', cap=2, price=0, img='') => {
             const tbody = document.getElementById('hotel-rooms-body');
             const tr = document.createElement('tr');
@@ -546,7 +570,12 @@
                     // Set checkboxes from array
                     if (h.amenities) {
                         h.amenities.forEach(am => {
-                            const cb = document.querySelector(`.amenity-checkbox[value="${am}"]`);
+                            let cb = document.querySelector(`.amenity-checkbox[value="${am}"]`);
+                            if (!cb) {
+                                // Create if not exists (custom)
+                                window.addCustomAmenity(am);
+                                cb = document.querySelector(`.amenity-checkbox[value="${am}"]`);
+                            }
                             if (cb) cb.checked = true;
                         });
                     }
@@ -1004,8 +1033,8 @@
                     const net = row.querySelector('.seg-net').value;
                     const margin = row.querySelector('.seg-margin').value;
                     
-                    // Lookup hotel to get the right room image
-                    const hotel = window.catalogHotels.find(x => x.id == hId);
+                    // Lookup hotel to get the right room image & amenities
+                    const hotel = window.catalogHotels.find(x => x.id == hId) || {name: '?', img: placeholderImg, amenities: []};
                     
                     // Logic to find specific room image
                     let displayImg = placeholderImg;
@@ -1013,6 +1042,9 @@
                         const roomObj = hotel.rooms.find(r => r.name == rName);
                         if(roomObj && roomObj.img) displayImg = roomObj.img;
                     }
+
+                    // ADDED: Amenity display logic
+                    const amenitiesList = hotel.amenities ? hotel.amenities.map(a => `<span class="text-[9px] text-gray-500 bg-gray-100 px-1 py-0.5 rounded mr-1 mb-1 inline-block border border-gray-200">${a}</span>`).join('') : '';
 
                     segmentsHtml += `
                         <div class="flex gap-3 mb-3 border-b border-gray-100 last:border-0 pb-3 last:pb-0">
@@ -1025,6 +1057,8 @@
                                 <div class="mb-1"><p class="text-[9px] text-gray-400 uppercase tracking-wide">Hotel</p><p class="text-xs font-bold text-gray-800 leading-tight">${hName}</p></div>
                                 <div class="mb-1"><p class="text-[9px] text-gray-400 uppercase tracking-wide">Habitación</p><p class="text-xs text-gray-700">${rName}</p></div>
                                 <div><span class="text-[9px] bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded border border-teal-100">${qty} ${qty > 1 ? 'Habs' : 'Hab'}</span></div>
+                                <!-- AMENITIES DISPLAY -->
+                                <div class="mt-2 flex flex-wrap">${amenitiesList}</div>
                             </div>
                         </div>`;
                     segments.push({id: hId, name: hName, room: rName, qty, nights: n, netPrice: net, margin: margin});
