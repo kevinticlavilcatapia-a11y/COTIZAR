@@ -160,7 +160,7 @@
                                         <div><label class="form-label">Salida</label><input type="date" id="departureDate" class="form-input" required onchange="window.renderSelectedToursTable()"></div>
                                     </div>
                                     <div class="grid grid-cols-2 gap-2">
-                                        <div><label class="form-label">Pax</label><input type="number" id="pax" class="form-input" value="2" min="1" required></div>
+                                        <div><label class="form-label">Pax</label><input type="number" id="pax" class="form-input" value="2" min="1" required onchange="window.updateFinancialDashboard()"></div>
                                         <div><label class="form-label">Agente</label><input type="text" id="agentName" class="form-input" value="Agente"></div>
                                     </div>
                                 </div>
@@ -199,10 +199,7 @@
                                     </table>
                                     <div id="no-tours-msg" class="p-4 text-center text-gray-400 italic text-xs">Sin tours seleccionados.</div>
                                 </div>
-                                
-                                <div class="mt-2 pt-2 border-t border-teal-200 text-right font-bold text-teal-800 text-sm">
-                                    Total Venta Tours (pp): <span id="tours-total-display" class="text-lg">S/.0</span>
-                                </div>
+                                <!-- ELIMINADO: Total Venta Tours (pp) display -->
                             </div>
 
                             <div class="pt-2 grid grid-cols-2 gap-3">
@@ -227,6 +224,28 @@
                                 </button>
                             </div>
                             <div id="hotel-options-wrapper" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                        </div>
+                        
+                        <!-- TABLERO FINANCIERO -->
+                        <div id="financial-dashboard" class="col-span-1 lg:col-span-12 mt-6 bg-gray-900 text-white p-4 rounded-lg shadow-lg">
+                            <h3 class="text-sm font-bold text-teal-400 mb-3 border-b border-gray-700 pb-2">Resumen Financiero (Costos Totales del Grupo)</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs text-left">
+                                    <thead class="text-gray-400 uppercase border-b border-gray-700">
+                                        <tr>
+                                            <th class="p-2">Opción</th>
+                                            <th class="p-2">Costo Operativo (Neto)</th>
+                                            <th class="p-2">Precio Venta (Total)</th>
+                                            <th class="p-2 text-green-400">Utilidad</th>
+                                            <th class="p-2">Rentabilidad %</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="financial-body">
+                                        <!-- Filas generadas por JS -->
+                                        <tr><td colspan="5" class="p-2 text-center text-gray-500">Agregue opciones para ver el análisis.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
                     </form>
@@ -502,7 +521,6 @@
             if(!text) return;
             
             const container = document.getElementById('amenities-checkbox-container');
-            // Check if exists
             if(Array.from(container.querySelectorAll('input')).some(i => i.value.toLowerCase() === text.toLowerCase())) {
                 if(!val) alert('Ya existe');
                 return;
@@ -555,7 +573,6 @@
                 document.getElementById('hotel-rooms-body').innerHTML = ''; 
                 document.getElementById('newHotelImgFile').value = '';
                 
-                // Clear checkboxes
                 document.querySelectorAll('.amenity-checkbox').forEach(cb => cb.checked = false);
 
                 if(isEdit) {
@@ -567,12 +584,10 @@
                     preview.src = h.img || '';
                     if(h.img) preview.classList.remove('hidden'); else preview.classList.add('hidden');
                     
-                    // Set checkboxes from array
                     if (h.amenities) {
                         h.amenities.forEach(am => {
                             let cb = document.querySelector(`.amenity-checkbox[value="${am}"]`);
                             if (!cb) {
-                                // Create if not exists (custom)
                                 window.addCustomAmenity(am);
                                 cb = document.querySelector(`.amenity-checkbox[value="${am}"]`);
                             }
@@ -622,7 +637,6 @@
                     if(rName) rooms.push({ name: rName, capacity: parseInt(rCap)||1, price: parseFloat(rPrice)||0, img: rImg });
                 });
 
-                // Get amenities from checkboxes
                 const amenities = Array.from(document.querySelectorAll('.amenity-checkbox:checked')).map(cb => cb.value);
 
                 const imgBase64 = document.getElementById('newHotelImgBase64').value || placeholderImg;
@@ -682,7 +696,6 @@
             const val = input.value;
             if(!val) return;
             
-            // Try to find by ID (set by checkMatch) or by Name match
             let tour = null;
             if(input.dataset.selectedId) {
                 tour = window.catalogTours.find(t => t.id == input.dataset.selectedId);
@@ -690,7 +703,6 @@
                 tour = window.catalogTours.find(t => t.name.toLowerCase() === val.toLowerCase());
             }
 
-            // Default for custom
             let tourData = {
                 id: Date.now(),
                 name: val,
@@ -709,7 +721,7 @@
                 dayLabel: "Día 1" 
             });
             window.renderSelectedToursTable();
-            input.value = ''; // Clear input
+            input.value = ''; 
             delete input.dataset.selectedId;
         }
 
@@ -717,8 +729,8 @@
             const tbody = document.getElementById('selected-tours-body');
             const msg = document.getElementById('no-tours-msg');
             tbody.innerHTML = '';
-            if(window.currentSelectedTours.length===0) { msg.classList.remove('hidden'); document.getElementById('tours-total-display').innerText='S/.0'; return; }
-            msg.classList.add('hidden');
+            if(window.currentSelectedTours.length===0) { msg.classList.remove('hidden'); }
+            else { msg.classList.add('hidden'); }
             
             const arrival = new Date(document.getElementById('arrivalDate').value);
             const departure = new Date(document.getElementById('departureDate').value);
@@ -740,13 +752,13 @@
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-2"><select class="w-full text-xs border rounded p-1 bg-white" onchange="window.currentSelectedTours[${i}].dayLabel=this.value; window.renderSelectedToursTable()">${currentDayOptions.replace(`value="${t.dayLabel}"`, `value="${t.dayLabel}" selected`)}</select></td>
                         <td class="p-2 text-xs font-semibold text-gray-700">${t.name}</td>
-                        <td class="p-2 text-center"><input type="number" value="${t.price_net}" class="w-16 border text-center text-xs p-1" onchange="window.currentSelectedTours[${i}].price_net=parseFloat(this.value); window.renderSelectedToursTable()"></td>
-                        <td class="p-2 text-center"><input type="number" value="${t.customMargin}" class="w-14 border text-center text-xs p-1" placeholder="S/." onchange="window.currentSelectedTours[${i}].customMargin=parseFloat(this.value); window.renderSelectedToursTable()"></td>
+                        <td class="p-2 text-center"><input type="number" value="${t.price_net}" class="w-16 border text-center text-xs p-1" onchange="window.currentSelectedTours[${i}].price_net=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
+                        <td class="p-2 text-center"><input type="number" value="${t.customMargin}" class="w-14 border text-center text-xs p-1" placeholder="S/." onchange="window.currentSelectedTours[${i}].customMargin=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
                         <td class="p-2 font-bold text-teal-700 text-xs text-center">S/.${sell.toFixed(2)}</td>
                         <td class="p-2 text-center"><button onclick="window.currentSelectedTours.splice(${i},1);window.renderSelectedToursTable()" class="text-red-400"><i class="fas fa-times"></i></button></td>
                     </tr>`;
             });
-            document.getElementById('tours-total-display').innerText = `S/.${total.toFixed(2)}`;
+            window.updateFinancialDashboard();
         }
 
         window.populateLocationSelect = (select) => {
@@ -757,14 +769,14 @@
             const wrapper = document.getElementById('hotel-options-wrapper');
             if(wrapper.children.length>=4) return Swal.fire('Límite 4 opciones', '', 'warning');
             const letter = String.fromCharCode(65 + wrapper.children.length);
-            const cardId = Date.now() + Math.random().toString(36).substr(2, 5); // ID único para datalist local si se usara
+            const cardId = Date.now() + Math.random().toString(36).substr(2, 5); 
             
             const div = document.createElement('div');
             div.className = "bg-gray-50 p-4 rounded-lg border border-gray-200 relative shadow-sm option-card group";
             div.innerHTML = `
                 <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-200">
                     <span class="bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded">Opción ${letter}</span>
-                    <button onclick="this.closest('.option-card').remove()" class="text-red-400 text-xs"><i class="fas fa-trash"></i></button>
+                    <button onclick="this.closest('.option-card').remove(); window.updateFinancialDashboard()" class="text-red-400 text-xs"><i class="fas fa-trash"></i></button>
                 </div>
                 
                 <div class="hotel-segments-container space-y-2 mb-3"></div>
@@ -776,7 +788,6 @@
                     
                     <input type="text" class="form-input text-xs py-1 h-8 mb-2 add-hotel-input" list="dl-hotels-global" placeholder="Buscar o Escribir Hotel" oninput="window.checkHotelMatch(this)">
                     
-                    <!-- Datalist para habitaciones, dinámico por JS -->
                     <input type="text" class="form-input text-xs py-1 h-8 mb-2 add-room-input" list="dl-rooms-${cardId}" placeholder="Tipo Habitación" oninput="window.checkRoomMatch(this)">
                     <datalist id="dl-rooms-${cardId}"></datalist>
                     
@@ -810,13 +821,13 @@
                 </div>
             `;
             wrapper.appendChild(div);
+            window.updateFinancialDashboard();
         }
 
         window.filterHotelsByLocation = (locInput) => {
             const val = locInput.value;
             const dl = document.getElementById('dl-hotels-global');
             if(!val) {
-                // Reset to all
                 dl.innerHTML = window.catalogHotels.map(h => `<option value="${h.name}">${h.zone}</option>`).join('');
                 return;
             }
@@ -828,19 +839,17 @@
             const val = input.value;
             const card = input.closest('.option-card');
             const roomDatalist = card.querySelector('datalist');
-            roomDatalist.innerHTML = ''; // Clear prev options
+            roomDatalist.innerHTML = ''; 
             
-            // Find matched hotel by name
             const hotel = window.catalogHotels.find(h => h.name === val);
             
             if (hotel) {
                 input.dataset.selectedId = hotel.id;
-                // Populate rooms
                 if (hotel.rooms) {
                     roomDatalist.innerHTML = hotel.rooms.map(r => `<option value="${r.name}">Cap: ${r.capacity} | S/.${r.price}</option>`).join('');
                 }
             } else {
-                delete input.dataset.selectedId; // It's a custom hotel
+                delete input.dataset.selectedId; 
             }
         }
 
@@ -882,15 +891,17 @@
             const nights = wrapper.querySelector('.add-nights').value;
             const price = wrapper.querySelector('.add-net-price').value;
             const margin = wrapper.querySelector('.add-margin').value;
-            const hotelId = wrapper.querySelector('.add-hotel-input').dataset.selectedId || ''; // Empty if custom
+            const hotelId = wrapper.querySelector('.add-hotel-input').dataset.selectedId || ''; 
 
             if(!hotelName || !roomName) return Swal.fire('Faltan datos', 'Ingrese hotel y habitación', 'warning');
 
             const saleTotal = (parseFloat(price) + parseFloat(margin)) * parseFloat(nights) * parseFloat(qty);
+            const netTotal = parseFloat(price) * parseFloat(nights) * parseFloat(qty);
 
             const div = document.createElement('div');
             div.className = "bg-white border border-gray-200 p-2 rounded relative shadow-sm segment-row";
             div.dataset.sellTotal = saleTotal;
+            div.dataset.netTotal = netTotal;
             
             div.innerHTML = `
                 <div class="absolute top-1 right-1 flex gap-1">
@@ -915,7 +926,7 @@
             container.appendChild(div);
             window.updateOptionTotals(btn);
             
-            // Clear specific fields but maybe leave hotel/dates for convenience? Let's clear room mostly.
+            // Clear specific fields
             wrapper.querySelector('.add-room-input').value = '';
             wrapper.querySelector('.add-net-price').value = '0';
         }
@@ -923,7 +934,7 @@
         window.editHotelSegment = (btn) => {
             const row = btn.closest('.segment-row');
             const card = btn.closest('.option-card');
-            const wrapper = card.querySelector('.bg-white.p-3'); // The add form
+            const wrapper = card.querySelector('.bg-white.p-3'); 
 
             // Extract data
             const hName = row.querySelector('.seg-hotel-name').value;
@@ -939,7 +950,6 @@
             hInput.value = hName;
             if(hId) hInput.dataset.selectedId = hId; else delete hInput.dataset.selectedId;
             
-            // Trigger match to populate room datalist
             window.checkHotelMatch(hInput); 
 
             wrapper.querySelector('.add-room-input').value = rName;
@@ -951,15 +961,68 @@
             // Update preview numbers
             window.calculateSegmentPreview(hInput);
 
-            // Remove the row (it's "moved" to edit area)
+            // Remove the row
             row.remove();
-            window.updateOptionTotals(wrapper); // Recalc totals after removal
+            window.updateOptionTotals(wrapper); 
         }
 
         window.updateOptionTotals = (elem) => {
-            // No display update needed in admin panel per previous request, 
-            // but logic might be needed for internal checks. 
-            // Left empty or can log for debug.
+            window.updateFinancialDashboard();
+        }
+
+        // --- DASHBOARD FINANCIERO ---
+        window.updateFinancialDashboard = () => {
+            const tbody = document.getElementById('financial-body');
+            const pax = parseInt(document.getElementById('pax').value) || 1;
+            
+            // Calcular Totales de Tours
+            let toursNetoTotal = 0;
+            let toursVentaTotal = 0;
+            
+            window.currentSelectedTours.forEach(t => {
+                toursNetoTotal += parseFloat(t.price_net);
+                toursVentaTotal += parseFloat(t.price_net) + parseFloat(t.customMargin || 0);
+            });
+            
+            // Multiplicar por PAX (ya que los precios de tours suelen ser por persona)
+            const toursNetoGlobal = toursNetoTotal * pax;
+            const toursVentaGlobal = toursVentaTotal * pax;
+
+            let html = '';
+            const options = document.querySelectorAll('.option-card');
+            
+            if(options.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-2 text-center text-gray-500">Agregue opciones para ver el análisis.</td></tr>';
+                return;
+            }
+
+            options.forEach((card, idx) => {
+                const letter = String.fromCharCode(65 + idx);
+                let hotelNetoOption = 0;
+                let hotelVentaOption = 0;
+
+                card.querySelectorAll('.segment-row').forEach(row => {
+                    hotelNetoOption += parseFloat(row.dataset.netTotal) || 0;
+                    hotelVentaOption += parseFloat(row.dataset.sellTotal) || 0;
+                });
+
+                // Costo Operativo Total = Tours(Global) + Hoteles(Global)
+                const costoOp = toursNetoGlobal + hotelNetoOption;
+                const precioVenta = toursVentaGlobal + hotelVentaOption;
+                const utilidad = precioVenta - costoOp;
+                const rentabilidad = precioVenta > 0 ? ((utilidad / precioVenta) * 100).toFixed(1) : 0;
+
+                html += `
+                    <tr class="border-b border-gray-700 hover:bg-gray-800">
+                        <td class="p-2 text-teal-400 font-bold">Opción ${letter}</td>
+                        <td class="p-2">S/.${costoOp.toFixed(2)}</td>
+                        <td class="p-2 font-bold text-white">S/.${precioVenta.toFixed(2)}</td>
+                        <td class="p-2 text-green-400">S/.${utilidad.toFixed(2)}</td>
+                        <td class="p-2 text-yellow-400">${rentabilidad}%</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
         }
 
         window.renderCatalogTables = () => {
@@ -1169,9 +1232,10 @@
                             const netTotal = seg.netPrice * seg.qty * seg.nights;
                             const saleTotal = (parseFloat(seg.netPrice) + (parseFloat(seg.margin)||0)) * seg.qty * seg.nights;
                             div.dataset.sellTotal = saleTotal;
+                            div.dataset.netTotal = netTotal;
                             
-                            // Use stored name if custom or not found
-                            const hotelName = seg.name || "Hotel";
+                            const hotel = window.catalogHotels.find(h=>h.id==seg.id);
+                            const hotelName = hotel?.name || "Hotel Guardado";
                             
                             div.innerHTML = `
                                 <div class="absolute top-1 right-1 flex gap-1">
