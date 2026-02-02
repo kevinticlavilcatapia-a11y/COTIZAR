@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TravelManager Pro v3 - Perú (Cloud)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        body { font-family: 'Open Sans', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Montserrat', sans-serif; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: white; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .shadow-lg { box-shadow: none; border: 1px solid #ddd; }
+            #admin-panel, #main-nav { display: none; }
+            #client-view-container { position: static; width: 100%; z-index: 9999; background: white; }
+            #client-view-content { zoom: 0.95; width: 100%; margin: 0; padding: 0; border: none; box-shadow: none; }
+            .print-grid-4 { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 1rem !important; }
+        }
+        
+        .form-input { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.9rem; transition: border-color 0.2s; }
+        .form-input:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1); }
+        .form-label { display: block; font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 0.25rem; }
+        .nav-btn { padding: 0.75rem 1.5rem; font-weight: 600; color: #4b5563; border-bottom: 3px solid transparent; transition: all 0.3s; }
+        .nav-btn.active { color: #0d9488; border-bottom-color: #0d9488; background-color: rgba(13, 148, 136, 0.05); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col min-h-screen">
+
+    <!-- NAV -->
+    <nav id="main-nav" class="bg-white shadow-md z-50 sticky top-0 no-print">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-cloud text-teal-600 text-2xl"></i>
+                    <span class="font-bold text-xl tracking-tight text-gray-800">TravelManager <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-200">CLOUD</span></span>
+                </div>
+                <div class="flex space-x-1">
+                    <button onclick="window.switchView('cotizacion')" id="btn-cotizacion" class="nav-btn active"><i class="fas fa-calculator mr-2"></i>Cotización</button>
+                    <button onclick="window.switchView('catalogo')" id="btn-catalogo" class="nav-btn"><i class="fas fa-database mr-2"></i>Catálogo</button>
+                    <button onclick="window.switchView('historial')" id="btn-historial" class="nav-btn"><i class="fas fa-history mr-2"></i>Historial</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex-grow relative">
+        <!-- Loading Indicator -->
+        <div id="loading-overlay" class="absolute inset-0 bg-white/80 z-[60] flex items-center justify-center backdrop-blur-sm hidden">
+            <div class="text-center">
+                <i class="fas fa-circle-notch fa-spin text-4xl text-teal-600 mb-3"></i>
+                <p class="text-sm font-semibold text-gray-600">Sincronizando con la nube...</p>
+            </div>
+        </div>
+
+        <!-- COTIZACIÓN -->
+        <div id="view-cotizacion" class="view-section">
+            <!-- VISTA PREVIA -->
+            <div id="client-view-container" class="bg-gray-50 border-b border-gray-200 hidden absolute top-0 w-full z-50 min-h-screen">
+                <div class="max-w-6xl mx-auto mt-4 px-4 py-4 flex justify-between items-center bg-teal-50 border border-teal-100 rounded-t-lg shadow-lg no-print">
+                    <span class="text-teal-800 font-semibold text-sm"><i class="fas fa-eye"></i> Vista Previa</span>
+                    <div class="flex gap-2">
+                        <button onclick="window.print()" class="bg-teal-600 text-white px-3 py-1 rounded text-sm hover:bg-teal-700"><i class="fas fa-print"></i> Imprimir</button>
+                        <button onclick="document.getElementById('client-view-container').classList.add('hidden')" class="bg-gray-200 text-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-300"><i class="fas fa-times"></i> Cerrar</button>
+                    </div>
+                </div>
+                <div id="client-view-content" class="pb-12 shadow-2xl max-w-6xl mx-auto bg-white min-h-screen print-hide-overflow"></div>
+            </div>
+
+            <!-- FORMULARIO -->
+            <section id="admin-panel" class="max-w-7xl mx-auto px-4 py-8 no-print">
+                <div class="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
+                    <div class="bg-gray-800 text-white p-6 flex justify-between items-center">
+                        <div>
+                            <h2 class="text-2xl font-bold"><i class="fas fa-pencil-alt mr-2"></i> Constructor de Cotización</h2>
+                            <p class="text-xs text-gray-400 mt-1">Conectado a Base de Datos en Tiempo Real</p>
+                        </div>
+                        <button onclick="window.resetProposalForm()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm transition"><i class="fas fa-eraser mr-1"></i> Limpiar Todo</button>
+                    </div>
+
+                    <form id="proposal-form" onsubmit="event.preventDefault();" class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        <!-- IZQUIERDA -->
+                        <div class="lg:col-span-5 space-y-6 border-r border-gray-200 pr-6">
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 shadow-sm">
+                                <h3 class="font-bold text-blue-800 mb-3 border-b border-blue-200 pb-1">1. Datos del Viaje</h3>
+                                <input type="hidden" id="proposalId">
+                                <div class="space-y-3">
+                                    <div><label class="form-label">Cliente</label><input type="text" id="clientName" class="form-input" required placeholder="Ej. Familia Quispe"></div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div><label class="form-label">Llegada</label><input type="date" id="arrivalDate" class="form-input" required onchange="window.renderSelectedToursTable()"></div>
+                                        <div><label class="form-label">Salida</label><input type="date" id="departureDate" class="form-input" required onchange="window.renderSelectedToursTable()"></div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div><label class="form-label">Pax</label><input type="number" id="pax" class="form-input" value="2" min="1" required></div>
+                                        <div><label class="form-label">Agente</label><input type="text" id="agentName" class="form-input" value="Agente"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-teal-50 p-4 rounded-lg border border-teal-100 shadow-sm">
+                                <h3 class="font-bold text-teal-800 mb-2 border-b border-teal-200 pb-1">2. Tours & Actividades</h3>
+                                <div class="mb-3">
+                                    <label class="text-xs font-bold text-gray-500 mb-1 block">Agregar Tour:</label>
+                                    <div class="flex gap-2">
+                                        <select id="catalogToursSelect" class="form-input text-sm flex-grow"></select>
+                                        <button type="button" onclick="window.addTourToSelection()" class="bg-teal-600 text-white px-3 rounded hover:bg-teal-700 font-bold text-sm whitespace-nowrap"><i class="fas fa-plus"></i> Agregar</button>
+                                    </div>
+                                </div>
+                                <div class="bg-white rounded border border-gray-200 overflow-hidden">
+                                    <table class="w-full text-xs text-left">
+                                        <thead class="bg-gray-100 uppercase font-bold text-gray-600">
+                                            <tr><th class="p-2 w-20">Día</th><th class="p-2">Tour</th><th class="p-2 w-16 text-center">Neto</th><th class="p-2 w-16 text-center">MG (S/.)</th><th class="p-2 w-16 text-center">Venta</th><th class="p-2 w-6"></th></tr>
+                                        </thead>
+                                        <tbody id="selected-tours-body"></tbody>
+                                    </table>
+                                    <div id="no-tours-msg" class="p-4 text-center text-gray-400 italic text-xs">Sin tours seleccionados.</div>
+                                </div>
+                                <div class="mt-2 pt-2 border-t border-teal-200 text-right font-bold text-teal-800 text-sm">Total Venta Tours (pp): <span id="tours-total-display" class="text-lg">S/.0</span></div>
+                            </div>
+
+                            <div class="pt-2 grid grid-cols-2 gap-3">
+                                <button type="button" onclick="window.generateProposal()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow transition flex justify-center items-center gap-2"><i class="fas fa-eye"></i> VER / IMPRIMIR</button>
+                                <button type="button" onclick="window.saveProposalToHistory()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow transition flex justify-center items-center gap-2"><i class="fas fa-save"></i> GUARDAR</button>
+                            </div>
+                        </div>
+
+                        <!-- DERECHA -->
+                        <div class="lg:col-span-7">
+                            <div class="flex justify-between items-center mb-4">
+                                <div><h3 class="font-bold text-gray-800 text-lg">3. Opciones de Alojamiento</h3><p class="text-xs text-gray-400">Configure opciones con múltiples hoteles.</p></div>
+                                <button type="button" onclick="window.addOptionGroup()" class="bg-white border border-blue-500 text-blue-600 text-xs px-4 py-2 rounded hover:bg-blue-50 font-bold flex items-center gap-2 shadow-sm"><i class="fas fa-plus"></i> Nueva Opción</button>
+                            </div>
+                            <div id="hotel-options-wrapper" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </div>
+
+        <!-- CATÁLOGO -->
+        <div id="view-catalogo" class="view-section hidden max-w-7xl mx-auto px-4 py-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">Catálogo de Proveedores (Cloud)</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- HOTELES -->
+                <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-teal-700"><i class="fas fa-hotel"></i> Hoteles</h3>
+                        <button onclick="window.editCatalogItem('hotel', null)" class="text-xs bg-teal-100 text-teal-700 px-3 py-1 rounded font-bold hover:bg-teal-200">+ Nuevo</button>
+                    </div>
+                    <div id="hotel-form-container" class="mb-4 bg-gray-50 p-4 rounded border hidden border-l-4 border-teal-500">
+                        <h4 class="text-sm font-bold mb-2 text-teal-800" id="hotel-form-title">Nuevo Hotel</h4>
+                        <input type="hidden" id="editHotelId">
+                        <div class="grid grid-cols-1 gap-2 mb-2">
+                            <input type="text" id="newHotelName" placeholder="Nombre Hotel" class="form-input text-sm">
+                            <input type="text" id="newHotelZone" placeholder="Zona/Ciudad" class="form-input text-sm">
+                            <div class="border rounded p-2 bg-white">
+                                <label class="text-[10px] text-gray-500 block mb-1">Imagen:</label>
+                                <input type="file" id="newHotelImgFile" accept="image/*" class="w-full text-xs" onchange="window.handleImageUpload(this, 'hotelImgPreview')">
+                                <input type="hidden" id="newHotelImgBase64">
+                                <img id="hotelImgPreview" class="h-20 w-full object-cover mt-2 hidden rounded">
+                            </div>
+                            <input type="text" id="newHotelAmenities" placeholder="Amenidades (sep. por comas)" class="form-input text-sm">
+                        </div>
+                        <div class="bg-white border border-gray-200 p-3 rounded mb-3">
+                            <label class="text-xs font-bold text-gray-500 mb-1 block">Habitaciones y Precios</label>
+                            <table class="w-full text-xs text-left mb-2">
+                                <thead class="bg-gray-100 text-gray-500"><tr><th class="p-1">Tipo</th><th class="p-1 w-12">Cap.</th><th class="p-1 w-20">Neto S/.</th><th class="p-1 w-6"></th></tr></thead>
+                                <tbody id="hotel-rooms-body"></tbody>
+                            </table>
+                            <button onclick="window.addRoomInputRow()" class="text-xs text-teal-600 font-bold hover:underline">+ Agregar Tipo</button>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="window.saveCatalogItem('hotel')" class="w-full bg-teal-600 text-white text-xs py-2 rounded font-bold">Guardar</button>
+                            <button onclick="window.toggleForm('hotel-form-container')" class="w-1/3 bg-gray-300 text-gray-700 text-xs py-2 rounded font-bold">Cancelar</button>
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto max-h-96 border rounded"><table class="w-full text-sm text-left"><thead class="bg-gray-100 text-xs uppercase"><tr><th class="p-2">Hotel</th><th class="p-2 text-right">Acciones</th></tr></thead><tbody id="catalog-hotels-table-body"></tbody></table></div>
+                </div>
+                <!-- TOURS -->
+                <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-blue-700"><i class="fas fa-map-marked-alt"></i> Tours</h3>
+                        <button onclick="window.editCatalogItem('tour', null)" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200">+ Nuevo</button>
+                    </div>
+                    <div id="tour-form-container" class="mb-4 bg-gray-50 p-4 rounded border hidden border-l-4 border-blue-500">
+                        <h4 class="text-sm font-bold mb-2 text-blue-800" id="tour-form-title">Nuevo Tour</h4>
+                        <input type="hidden" id="editTourId">
+                        <input type="text" id="newTourName" placeholder="Nombre Tour" class="form-input mb-2 text-sm">
+                        <div class="grid grid-cols-2 gap-2 mb-2"><input type="number" id="newTourPrice" placeholder="Costo Neto (S/.)" class="form-input text-sm col-span-2"></div>
+                        <input type="text" id="newTourDesc" placeholder="Descripción breve" class="form-input mb-2 text-sm">
+                        <div class="flex gap-2">
+                            <button onclick="window.saveCatalogItem('tour')" class="w-full bg-blue-600 text-white text-xs py-2 rounded font-bold">Guardar</button>
+                            <button onclick="window.toggleForm('tour-form-container')" class="w-1/3 bg-gray-300 text-gray-700 text-xs py-2 rounded font-bold">Cancelar</button>
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto max-h-96 border rounded"><table class="w-full text-sm text-left"><thead class="bg-gray-100 text-xs uppercase"><tr><th class="p-2">Tour</th><th class="p-2">Neto</th><th class="p-2 text-right">Acciones</th></tr></thead><tbody id="catalog-tours-table-body"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORIAL -->
+        <div id="view-historial" class="view-section hidden max-w-7xl mx-auto px-4 py-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">Historial de Cotizaciones (Cloud)</h2>
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-800 text-white"><tr><th class="p-4">Fecha</th><th class="p-4">Cliente</th><th class="p-4">Detalles</th><th class="p-4 text-right">Acciones</th></tr></thead>
+                    <tbody id="history-table-body" class="text-sm text-gray-700 divide-y divide-gray-200"></tbody>
+                </table>
+                <div id="empty-history-msg" class="p-8 text-center text-gray-500 hidden">Cargando datos o vacío...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE MODULE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // CONFIG & INIT
+        const firebaseConfig = {
+  apiKey: "AIzaSyADhmnQAZIE_t2NBKGlMbKrSpPXwqoyCb8",
+  authDomain: "travelmanagerpro.firebaseapp.com",
+  projectId: "travelmanagerpro",
+  storageBucket: "travelmanagerpro.firebasestorage.app",
+  messagingSenderId: "265096120508",
+  appId: "1:265096120508:web:11dad6272d77727f9228b9"
+};
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        let userId = null;
+
+        // AUTH FLOW
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        };
+        initAuth();
+
+        // GLOBAL DATA STATE (Sincronizado con Firestore)
+        window.catalogHotels = [];
+        window.catalogTours = [];
+        window.savedProposals = [];
+        window.currentSelectedTours = [];
+
+        // AUTH LISTENER & DATA SYNC
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userId = user.uid;
+                subscribeToData();
+                document.getElementById('loading-overlay').classList.add('hidden');
+            } else {
+                document.getElementById('loading-overlay').classList.remove('hidden');
+            }
+        });
+
+        function subscribeToData() {
+            if (!userId) return;
+
+            // 1. HOTELS
+            const hotelsRef = collection(db, 'artifacts', appId, 'users', userId, 'hotels');
+            onSnapshot(hotelsRef, (snapshot) => {
+                window.catalogHotels = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                window.renderCatalogTables();
+                window.populateCatalogDropdowns();
+            });
+
+            // 2. TOURS
+            const toursRef = collection(db, 'artifacts', appId, 'users', userId, 'tours');
+            onSnapshot(toursRef, (snapshot) => {
+                window.catalogTours = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                window.renderCatalogTables();
+                window.populateCatalogDropdowns();
+            });
+
+            // 3. PROPOSALS
+            const propsRef = collection(db, 'artifacts', appId, 'users', userId, 'proposals');
+            onSnapshot(propsRef, (snapshot) => {
+                window.savedProposals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                window.renderHistoryTable();
+            });
+        }
+
+        // --- FIRESTORE CRUD HELPERS (Exposed globally) ---
+        
+        window.fsAddHotel = async (data) => {
+            if(!userId) return;
+            await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'hotels'), data);
+        }
+        window.fsUpdateHotel = async (id, data) => {
+            if(!userId) return;
+            await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'hotels', id), data);
+        }
+        window.fsDeleteHotel = async (id) => {
+            if(!userId) return;
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'hotels', id));
+        }
+
+        window.fsAddTour = async (data) => {
+            if(!userId) return;
+            await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'tours'), data);
+        }
+        window.fsUpdateTour = async (id, data) => {
+            if(!userId) return;
+            await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'tours', id), data);
+        }
+        window.fsDeleteTour = async (id) => {
+            if(!userId) return;
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'tours', id));
+        }
+
+        window.fsSaveProposal = async (data) => {
+            if(!userId) return;
+            // Si el ID es numérico (legacy/local), crear nuevo doc. Si es string largo, es update.
+            // Para simplicidad, si ya existe ID, hacemos setDoc, sino addDoc.
+            // Ojo: data.id puede ser timestamp o ID de firestore.
+            const colRef = collection(db, 'artifacts', appId, 'users', userId, 'proposals');
+            
+            // Check if ID exists in current list to decide update vs create
+            const exists = window.savedProposals.find(p => p.id === data.id);
+            
+            if (exists) {
+                // Update existing
+                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'proposals', data.id), data);
+            } else {
+                // Create new (let Firestore gen ID, update local ID)
+                // O mejor, usamos setDoc con un ID generado si queremos control, o addDoc.
+                // Como data.id viene del form, si es nuevo es Date.now().
+                // Mejor estrategia: Si data.id parece un timestamp, usar addDoc y dejar que FS asigne ID.
+                const { id, ...docData } = data; // Remove ID from body if we rely on FS ID
+                if (data.id && data.id.toString().length < 20) { // Timestamp check dummy
+                     await addDoc(colRef, docData);
+                } else {
+                     await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'proposals', data.id), docData);
+                }
+            }
+        }
+        window.fsDeleteProposal = async (id) => {
+            if(!userId) return;
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'proposals', id));
+        }
+
+    </script>
+
+    <!-- LOGICA DE LA APLICACIÓN (Adaptada a llamadas async/globales) -->
+    <script>
+        const placeholderImg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
+        // --- NAVIGATION ---
+        window.switchView = (viewName) => {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            document.getElementById(`btn-${viewName}`).classList.add('active');
+            if(viewName === 'catalogo') window.renderCatalogTables();
+            if(viewName === 'historial') window.renderHistoryTable();
+        }
+        window.toggleForm = (id) => { document.getElementById(id).classList.toggle('hidden'); }
+
+        // --- CATALOGO HOTELES ---
+        window.addRoomInputRow = (name='', cap=2, price=0) => {
+            const tbody = document.getElementById('hotel-rooms-body');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="p-1"><input type="text" class="w-full border p-1 text-xs room-name-input" placeholder="Nombre" value="${name}"></td>
+                <td class="p-1"><input type="number" class="w-full border p-1 text-xs room-cap-input" placeholder="Pax" value="${cap}"></td>
+                <td class="p-1"><input type="number" class="w-full border p-1 text-xs room-price-input" placeholder="S/." value="${price}"></td>
+                <td class="p-1 text-center"><button onclick="this.closest('tr').remove()" class="text-red-500 text-xs">x</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        window.handleImageUpload = (input, previewId) => {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64 = e.target.result;
+                    document.getElementById('newHotelImgBase64').value = base64;
+                    const preview = document.getElementById(previewId);
+                    preview.src = base64;
+                    preview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        window.editCatalogItem = (type, id) => {
+            const isEdit = id !== null;
+            document.getElementById(type === 'hotel' ? 'hotel-form-container' : 'tour-form-container').classList.remove('hidden');
+            
+            if(type === 'hotel') {
+                document.getElementById('editHotelId').value = isEdit ? id : '';
+                document.getElementById('hotel-rooms-body').innerHTML = ''; 
+                document.getElementById('newHotelImgFile').value = '';
+                
+                if(isEdit) {
+                    const h = window.catalogHotels.find(x => x.id == id);
+                    document.getElementById('newHotelName').value = h.name;
+                    document.getElementById('newHotelZone').value = h.zone;
+                    document.getElementById('newHotelImgBase64').value = h.img;
+                    const preview = document.getElementById('hotelImgPreview');
+                    preview.src = h.img || '';
+                    if(h.img) preview.classList.remove('hidden'); else preview.classList.add('hidden');
+                    document.getElementById('newHotelAmenities').value = h.amenities ? h.amenities.join(', ') : '';
+                    
+                    if(h.rooms && h.rooms.length > 0) {
+                        h.rooms.forEach(r => window.addRoomInputRow(r.name, r.capacity, r.price));
+                    } else {
+                        window.addRoomInputRow();
+                    }
+                } else {
+                    document.getElementById('newHotelName').value = '';
+                    document.getElementById('newHotelZone').value = '';
+                    document.getElementById('newHotelImgBase64').value = '';
+                    document.getElementById('hotelImgPreview').classList.add('hidden');
+                    document.getElementById('newHotelAmenities').value = '';
+                    window.addRoomInputRow();
+                }
+            } else {
+                document.getElementById('editTourId').value = isEdit ? id : '';
+                if(isEdit) {
+                    const t = window.catalogTours.find(x => x.id == id);
+                    document.getElementById('newTourName').value = t.name;
+                    document.getElementById('newTourPrice').value = t.price_net;
+                    document.getElementById('newTourDesc').value = t.desc;
+                } else {
+                    document.getElementById('newTourName').value = '';
+                    document.getElementById('newTourPrice').value = '';
+                    document.getElementById('newTourDesc').value = '';
+                }
+            }
+        }
+
+        window.saveCatalogItem = (type) => {
+            if(type === 'hotel') {
+                const id = document.getElementById('editHotelId').value;
+                const name = document.getElementById('newHotelName').value;
+                if(!name) return Swal.fire('Error', 'Nombre requerido', 'error');
+
+                const rooms = [];
+                document.querySelectorAll('#hotel-rooms-body tr').forEach(tr => {
+                    const rName = tr.querySelector('.room-name-input').value;
+                    const rCap = tr.querySelector('.room-cap-input').value;
+                    const rPrice = tr.querySelector('.room-price-input').value;
+                    if(rName) rooms.push({ name: rName, capacity: parseInt(rCap)||1, price: parseFloat(rPrice)||0 });
+                });
+
+                const imgBase64 = document.getElementById('newHotelImgBase64').value || placeholderImg;
+                const data = {
+                    name: name,
+                    zone: document.getElementById('newHotelZone').value,
+                    img: imgBase64,
+                    amenities: document.getElementById('newHotelAmenities').value.split(',').map(s=>s.trim()),
+                    rooms: rooms
+                };
+
+                if(id) window.fsUpdateHotel(id, data); else window.fsAddHotel(data);
+                window.toggleForm('hotel-form-container');
+
+            } else {
+                const id = document.getElementById('editTourId').value;
+                const name = document.getElementById('newTourName').value;
+                if(!name) return Swal.fire('Error', 'Nombre requerido', 'error');
+                const data = {
+                    name,
+                    price_net: parseFloat(document.getElementById('newTourPrice').value)||0,
+                    desc: document.getElementById('newTourDesc').value
+                };
+                if(id) window.fsUpdateTour(id, data); else window.fsAddTour(data);
+                window.toggleForm('tour-form-container');
+            }
+        }
+
+        window.deleteCatalogItem = (type, id) => {
+            if(!confirm('¿Eliminar?')) return;
+            if(type === 'hotel') window.fsDeleteHotel(id); else window.fsDeleteTour(id);
+        }
+
+        // --- COTIZACIÓN LOGIC ---
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('arrivalDate').valueAsDate = new Date();
+            const d = new Date(); d.setDate(d.getDate()+4);
+            document.getElementById('departureDate').valueAsDate = d;
+            
+            // Initial empty check handled by firebase callback
+            if(document.getElementById('hotel-options-wrapper').children.length===0) window.addOptionGroup();
+        });
+
+        window.populateCatalogDropdowns = () => {
+            const s = document.getElementById('catalogToursSelect');
+            if(s) s.innerHTML = window.catalogTours.map(t => `<option value="${t.id}">${t.name} (Neto: S/.${t.price_net})</option>`).join('');
+        }
+
+        window.addTourToSelection = () => {
+            const id = document.getElementById('catalogToursSelect').value; // String ID in firebase
+            const t = window.catalogTours.find(x => x.id == id);
+            if(!t) return;
+            
+            window.currentSelectedTours.push({
+                ...t, 
+                price_net: t.price_net,
+                customMargin: 20, 
+                dayLabel: "Día 1" 
+            });
+            window.renderSelectedToursTable();
+        }
+
+        window.renderSelectedToursTable = () => {
+            const tbody = document.getElementById('selected-tours-body');
+            const msg = document.getElementById('no-tours-msg');
+            tbody.innerHTML = '';
+            if(window.currentSelectedTours.length===0) { msg.classList.remove('hidden'); document.getElementById('tours-total-display').innerText='S/.0'; return; }
+            msg.classList.add('hidden');
+            
+            const arrival = new Date(document.getElementById('arrivalDate').value);
+            const departure = new Date(document.getElementById('departureDate').value);
+            const diffDays = Math.ceil(Math.abs(departure - arrival) / (1000 * 60 * 60 * 24)) + 1; 
+            
+            let dayOptions = '';
+            for(let i=1; i < diffDays; i++) dayOptions += `<option value="Día ${i}">Día ${i}</option>`;
+            if(!dayOptions) dayOptions = `<option value="Día 1">Día 1</option>`;
+
+            let total = 0;
+            window.currentSelectedTours.forEach((t, i) => {
+                const sell = parseFloat(t.price_net) + parseFloat(t.customMargin || 0);
+                total += sell;
+                
+                let currentDayOptions = dayOptions;
+                if(!dayOptions.includes(`value="${t.dayLabel}"`)) currentDayOptions += `<option value="${t.dayLabel}" selected>${t.dayLabel}</option>`;
+
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-2"><select class="w-full text-xs border rounded p-1 bg-white" onchange="window.currentSelectedTours[${i}].dayLabel=this.value; window.renderSelectedToursTable()">${currentDayOptions.replace(`value="${t.dayLabel}"`, `value="${t.dayLabel}" selected`)}</select></td>
+                        <td class="p-2 text-xs font-semibold text-gray-700">${t.name}</td>
+                        <td class="p-2 text-center"><input type="number" value="${t.price_net}" class="w-16 border text-center text-xs p-1" onchange="window.currentSelectedTours[${i}].price_net=parseFloat(this.value); window.renderSelectedToursTable()"></td>
+                        <td class="p-2 text-center"><input type="number" value="${t.customMargin}" class="w-14 border text-center text-xs p-1" placeholder="S/." onchange="window.currentSelectedTours[${i}].customMargin=parseFloat(this.value); window.renderSelectedToursTable()"></td>
+                        <td class="p-2 font-bold text-teal-700 text-xs text-center">S/.${sell.toFixed(2)}</td>
+                        <td class="p-2 text-center"><button onclick="window.currentSelectedTours.splice(${i},1);window.renderSelectedToursTable()" class="text-red-400"><i class="fas fa-times"></i></button></td>
+                    </tr>`;
+            });
+            document.getElementById('tours-total-display').innerText = `S/.${total.toFixed(2)}`;
+        }
+
+        window.addOptionGroup = () => {
+            const wrapper = document.getElementById('hotel-options-wrapper');
+            if(wrapper.children.length>=4) return Swal.fire('Límite 4 opciones', '', 'warning');
+            const letter = String.fromCharCode(65 + wrapper.children.length);
+            
+            const div = document.createElement('div');
+            div.className = "bg-gray-50 p-4 rounded-lg border border-gray-200 relative shadow-sm option-card group";
+            div.innerHTML = `
+                <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-200">
+                    <span class="bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded">Opción ${letter}</span>
+                    <button onclick="this.closest('.option-card').remove()" class="text-red-400 text-xs"><i class="fas fa-trash"></i></button>
+                </div>
+                <div class="bg-white p-2 mb-3 rounded border border-gray-200 text-xs flex gap-2 items-center">
+                    <span class="font-bold text-gray-600">Margen Fijo (S/.):</span>
+                    <input type="number" class="w-16 border text-center hotel-margin-value p-1" value="50" onchange="window.updateOptionTotals(this)">
+                    <span class="text-gray-400 text-[10px]">(Por Pax)</span>
+                </div>
+                <div class="hotel-segments-container space-y-2 mb-3"></div>
+                <div class="bg-white p-3 rounded border border-dashed border-gray-300">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Agregar Alojamiento</p>
+                    <select class="form-input text-xs py-1 h-8 mb-2 add-hotel-select" onchange="window.updateAddRoomSelect(this)">
+                        <option value="">-- Seleccionar Hotel --</option>
+                        ${window.catalogHotels.map(h => `<option value="${h.id}">${h.name} (${h.zone})</option>`).join('')}
+                    </select>
+                    <select class="form-input text-xs py-1 h-8 mb-2 add-room-select" disabled><option>-- Seleccione Hotel --</option></select>
+                    <div class="flex gap-2 mb-2">
+                        <input type="number" class="form-input text-xs py-1 w-1/2 add-qty" placeholder="Cant." value="1" title="Cantidad">
+                        <input type="number" class="form-input text-xs py-1 w-1/2 add-nights" placeholder="Noches" value="2" title="Noches">
+                    </div>
+                    <button type="button" onclick="window.commitHotelSegment(this)" class="w-full bg-blue-100 text-blue-700 text-xs font-bold py-1 rounded hover:bg-blue-200">+ Agregar a la Lista</button>
+                </div>
+                <div class="mt-3 pt-3 border-t border-gray-200 text-right"><p class="text-xs text-gray-500">Total Alojamiento (pp)</p><p class="text-xl font-bold text-blue-700 option-total-display">S/.0</p></div>
+            `;
+            wrapper.appendChild(div);
+        }
+
+        window.updateAddRoomSelect = (hotelSelect) => {
+            const wrapper = hotelSelect.closest('div');
+            const roomSelect = wrapper.querySelector('.add-room-select');
+            const hotelId = hotelSelect.value;
+            roomSelect.innerHTML = ''; roomSelect.disabled = true;
+            if(!hotelId) { roomSelect.innerHTML = '<option>-- Seleccione Hotel --</option>'; return; }
+            const hotel = window.catalogHotels.find(h => h.id == hotelId);
+            if(hotel && hotel.rooms && hotel.rooms.length > 0) {
+                roomSelect.disabled = false;
+                hotel.rooms.forEach((r, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx; 
+                    opt.text = `${r.name} (Cap: ${r.capacity}) - S/.${r.price}`;
+                    roomSelect.appendChild(opt);
+                });
+            } else { roomSelect.innerHTML = '<option>Sin habitaciones.</option>'; }
+        }
+
+        window.commitHotelSegment = (btn) => {
+            const wrapper = btn.closest('div');
+            const card = btn.closest('.option-card');
+            const container = card.querySelector('.hotel-segments-container');
+            const hotelSelect = wrapper.querySelector('.add-hotel-select');
+            const roomSelect = wrapper.querySelector('.add-room-select');
+            const qtyInput = wrapper.querySelector('.add-qty');
+            const nightsInput = wrapper.querySelector('.add-nights');
+            const hotelId = hotelSelect.value;
+            const roomIdx = roomSelect.value;
+            if(!hotelId || roomSelect.disabled) return;
+            const hotel = window.catalogHotels.find(h => h.id == hotelId);
+            const room = hotel.rooms[roomIdx];
+            const qty = parseInt(qtyInput.value)||1;
+            const nights = parseInt(nightsInput.value)||1;
+            const totalNet = room.price * qty * nights;
+            const div = document.createElement('div');
+            div.className = "bg-white border border-gray-200 p-2 rounded relative shadow-sm segment-row";
+            div.dataset.netTotal = totalNet; 
+            div.innerHTML = `
+                <button onclick="this.closest('.segment-row').remove(); window.updateOptionTotals(this)" class="absolute top-1 right-1 text-red-400 text-xs">x</button>
+                <div class="font-bold text-xs text-gray-700">${hotel.name}</div>
+                <div class="text-[10px] text-gray-500">${room.name}</div>
+                <div class="flex justify-between items-end mt-1">
+                    <div class="text-[10px] bg-gray-100 px-1 rounded">${qty} Hab. x ${nights} Ns</div>
+                    <div class="text-xs font-mono text-teal-600">Neto: S/.${totalNet}</div>
+                </div>
+                <input type="hidden" class="seg-hotel-id" value="${hotel.id}">
+                <input type="hidden" class="seg-room-name" value="${room.name}">
+                <input type="hidden" class="seg-qty" value="${qty}">
+                <input type="hidden" class="seg-nights" value="${nights}">
+                <input type="hidden" class="seg-net" value="${room.price}">
+            `;
+            container.appendChild(div);
+            window.updateOptionTotals(btn);
+        }
+
+        window.updateOptionTotals = (elem) => {
+            const card = elem.closest('.option-card');
+            if(!card) return;
+            const margin = parseFloat(card.querySelector('.hotel-margin-value').value)||0;
+            let netSum = 0;
+            card.querySelectorAll('.segment-row').forEach(row => { netSum += parseFloat(row.dataset.netTotal)||0; });
+            const sell = netSum + margin;
+            card.querySelector('.option-total-display').innerText = `S/.${sell.toFixed(2)}`;
+        }
+
+        window.renderCatalogTables = () => {
+            const hotels = window.catalogHotels || [];
+            document.getElementById('catalog-hotels-table-body').innerHTML = hotels.map(h => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-2"><div class="font-bold text-gray-700">${h.name}</div><div class="text-xs text-gray-400">${h.rooms ? h.rooms.length : 0} tipos</div></td>
+                    <td class="p-2 text-right"><button onclick="window.editCatalogItem('hotel', '${h.id}')" class="text-blue-500"><i class="fas fa-edit"></i></button><button onclick="window.deleteCatalogItem('hotel', '${h.id}')" class="text-red-500 ml-2"><i class="fas fa-trash"></i></button></td>
+                </tr>`).join('');
+            
+            const tours = window.catalogTours || [];
+            document.getElementById('catalog-tours-table-body').innerHTML = tours.map(t => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-2">${t.name}</td>
+                    <td class="p-2 font-mono text-xs text-blue-600">S/.${t.price_net}</td>
+                    <td class="p-2 text-right"><button onclick="window.editCatalogItem('tour', '${t.id}')" class="text-blue-500"><i class="fas fa-edit"></i></button><button onclick="window.deleteCatalogItem('tour', '${t.id}')" class="text-red-500 ml-2"><i class="fas fa-trash"></i></button></td>
+                </tr>`).join('');
+        }
+
+        window.renderHistoryTable = () => {
+            const proposals = window.savedProposals || [];
+            document.getElementById('history-table-body').innerHTML = proposals.map(p => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-4 text-xs text-gray-500">${new Date(p.dateCreated).toLocaleDateString()}</td>
+                    <td class="p-4 font-bold text-sm">${p.clientName}</td>
+                    <td class="p-4 text-xs text-gray-500">${p.pax} Pax | ${p.options.length} Ops.</td>
+                    <td class="p-4 text-right space-x-2">
+                        <button onclick="window.loadProposal('${p.id}')" class="text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></button>
+                        <button onclick="window.printProposal('${p.id}')" class="text-teal-600 hover:text-teal-800"><i class="fas fa-print"></i></button>
+                        <button onclick="window.fsDeleteProposal('${p.id}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`).join('');
+            
+            document.getElementById('empty-history-msg').classList.toggle('hidden', proposals.length > 0);
+        }
+
+        // --- DATA COLLECTION ---
+        window.getProposalData = () => {
+            const pax = document.getElementById('pax').value;
+            const arrival = document.getElementById('arrivalDate').value;
+            const departure = document.getElementById('departureDate').value;
+            const client = document.getElementById('clientName').value;
+            const agent = document.getElementById('agentName').value;
+
+            let totalToursVenta = 0;
+            const tourList = window.currentSelectedTours.map(t => {
+                const venta = parseFloat(t.price_net) + parseFloat(t.customMargin||0);
+                totalToursVenta += venta;
+                return {...t, price_public: venta};
+            });
+            tourList.sort((a,b) => {
+                const getVal = (str) => { if(!str) return 999; const match = str.match(/\d+/); return match ? parseInt(match[0]) : 999; };
+                return getVal(a.dayLabel) - getVal(b.dayLabel);
+            });
+
+            const options = [];
+            document.querySelectorAll('.option-card').forEach((card, i) => {
+                const margin = parseFloat(card.querySelector('.hotel-margin-value').value)||0;
+                let segmentsHtml = '';
+                let totalNetOption = 0;
+                const segments = []; 
+                card.querySelectorAll('.segment-row').forEach(row => {
+                    const netTotal = parseFloat(row.dataset.netTotal);
+                    totalNetOption += netTotal;
+                    const hId = row.querySelector('.seg-hotel-id').value;
+                    const rName = row.querySelector('.seg-room-name').value;
+                    const qty = row.querySelector('.seg-qty').value;
+                    const n = row.querySelector('.seg-nights').value;
+                    const net = row.querySelector('.seg-net').value;
+                    const hotel = window.catalogHotels.find(x => x.id == hId) || {name: '?', img: placeholderImg};
+
+                    segmentsHtml += `
+                        <div class="flex gap-3 mb-3 border-b border-gray-100 last:border-0 pb-3 last:pb-0">
+                            <div class="w-24 h-32 rounded-lg overflow-hidden shadow relative flex-shrink-0">
+                                <img src="${hotel.img}" class="w-full h-full object-cover">
+                                <div class="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-1.5"><p class="text-white text-[9px] font-bold leading-tight line-clamp-2">${hotel.name}</p></div>
+                                <div class="absolute top-1 right-1 bg-white/90 text-[9px] px-1.5 py-0.5 rounded font-bold shadow text-teal-800">${n} Ns</div>
+                            </div>
+                            <div class="flex-1 flex flex-col justify-center">
+                                <div class="mb-1"><p class="text-[9px] text-gray-400 uppercase tracking-wide">Hotel</p><p class="text-xs font-bold text-gray-800 leading-tight">${hotel.name}</p></div>
+                                <div class="mb-1"><p class="text-[9px] text-gray-400 uppercase tracking-wide">Habitación</p><p class="text-xs text-gray-700">${rName}</p></div>
+                                <div><span class="text-[9px] bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded border border-teal-100">${qty} ${qty > 1 ? 'Habs' : 'Hab'}</span></div>
+                            </div>
+                        </div>`;
+                    segments.push({id: hId, room: rName, qty, nights: n, netPrice: net});
+                });
+
+                const totalOptionVenta = totalNetOption + margin;
+                const grandTotalPP = totalOptionVenta + totalToursVenta;
+                const grandTotalGroup = grandTotalPP * pax;
+
+                options.push({
+                    letter: String.fromCharCode(65 + i),
+                    html: segmentsHtml,
+                    segments: segments,
+                    margin: margin,
+                    pricePP: grandTotalPP,
+                    priceGroup: grandTotalGroup,
+                    rawTotal: grandTotalGroup 
+                });
+            });
+            options.sort((a,b) => a.rawTotal - b.rawTotal);
+
+            return {
+                id: document.getElementById('proposalId').value || Date.now().toString(),
+                dateCreated: new Date().toISOString(),
+                clientName: client, agent, pax, arrival, departure,
+                tours: tourList, options: options
+            };
+        }
+
+        window.generateProposal = () => {
+            const data = window.getProposalData();
+            if(!data.clientName) return Swal.fire('Falta Nombre', 'Ingrese nombre del cliente', 'warning');
+            const nights = Math.ceil((new Date(data.departure) - new Date(data.arrival))/(1000*60*60*24));
+            
+            let toursHtml = '';
+            if(data.tours.length > 0) {
+                toursHtml = '<div class="space-y-2">';
+                data.tours.forEach(t => {
+                    toursHtml += `<div class="flex items-start p-3 border-b border-gray-100"><div class="w-24 flex-shrink-0 pt-1"><span class="bg-teal-50 text-teal-800 text-[10px] font-bold px-2 py-1 rounded uppercase block text-center">${t.dayLabel}</span></div><div class="ml-3"><div class="font-bold text-sm text-gray-800">${t.name}</div><div class="text-xs text-gray-500 mt-1">${t.desc}</div></div></div>`;
+                });
+                toursHtml += '</div>';
+            } else { toursHtml = '<p class="text-gray-400 italic text-xs p-4">Sin actividades extra.</p>'; }
+
+            const gridClass = data.options.length === 4 ? 'grid-cols-4 print-grid-4' : `grid-cols-${Math.min(data.options.length, 3)}`;
+            const headerCells = data.options.map(opt => `<th class="p-3 border text-center bg-gray-100 text-gray-700 text-sm">OPCIÓN ${opt.letter}</th>`).join('');
+            const ppCells = data.options.map(opt => `<td class="p-3 border text-center font-bold text-teal-700 text-sm">S/.${opt.pricePP.toLocaleString('es-PE', {minimumFractionDigits:0})}</td>`).join('');
+            const groupCells = data.options.map(opt => `<td class="p-3 border text-center font-bold text-gray-800 text-base">S/.${opt.priceGroup.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>`).join('');
+
+            const docHtml = `
+                <div class="font-sans text-gray-800 bg-white">
+                     <div class="bg-gray-900 text-white p-8">
+                        <h1 class="text-3xl font-bold text-teal-400 mb-6 border-b border-gray-700 pb-4">PROPUESTA DE VIAJE</h1>
+                        <div class="grid grid-cols-2 gap-6 text-sm">
+                            <div><p class="text-gray-400 text-xs uppercase tracking-wider mb-1">CLIENTE:</p><p class="font-bold text-lg text-white">${data.clientName}</p><p class="text-gray-400 text-xs mt-1">Asesor: ${data.agent}</p></div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><p class="text-gray-400 text-xs uppercase tracking-wider mb-1">FECHA DE LLEGADA:</p><p class="font-semibold">${data.arrival}</p></div>
+                                <div><p class="text-gray-400 text-xs uppercase tracking-wider mb-1">FECHA DE RETORNO:</p><p class="font-semibold">${data.departure}</p></div>
+                                <div class="col-span-2"><p class="text-gray-400 text-xs uppercase tracking-wider mb-1">CANTIDAD DE PERSONAS:</p><p class="font-semibold bg-teal-800 inline-block px-3 py-1 rounded">${data.pax}</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-8">
+                        <div class="mb-8"><h2 class="text-lg font-bold text-gray-700 border-b-2 border-teal-500 inline-block mb-4">Opciones de Alojamiento</h2>
+                            <div class="grid ${gridClass} gap-4">
+                                ${data.options.map((opt, idx) => `
+                                    <div class="border rounded-lg overflow-hidden flex flex-col shadow-sm">
+                                        <div class="bg-gray-100 p-2 text-center font-bold text-xs text-gray-600">OPCIÓN ${opt.letter} ${idx===0 ? '<span class="ml-1 text-green-600 text-[10px]">(Mejor Precio)</span>':''}</div>
+                                        <div class="p-3 flex-grow bg-white">${opt.html}</div>
+                                        <div class="p-3 bg-gray-50 border-t text-center"><div class="text-[10px] text-gray-400 uppercase">Inversión Total x Persona</div><div class="text-xl font-bold text-teal-700">S/.${opt.pricePP.toLocaleString('es-PE', {minimumFractionDigits:0})}</div></div>
+                                    </div>`).join('')}
+                            </div>
+                        </div>
+                        <div class="mb-8"><h2 class="text-lg font-bold text-gray-700 border-b-2 border-blue-500 inline-block mb-4">Itinerario de Actividades</h2><div class="border rounded-lg bg-white overflow-hidden">${toursHtml}</div></div>
+                        <div class="border-t pt-4"><h3 class="text-center font-bold text-gray-700 mb-2">RESUMEN DE INVERSIÓN</h3>
+                            <div class="overflow-x-auto mt-6"><table class="w-full border-collapse border border-gray-200"><thead><tr><th class="p-3 border bg-gray-200 text-left w-1/4 text-sm font-bold text-gray-600 uppercase">Concepto</th>${headerCells}</tr></thead><tbody><tr class="bg-white"><td class="p-3 border font-semibold text-gray-600 text-sm">Precio por Persona</td>${ppCells}</tr><tr class="bg-gray-50"><td class="p-3 border font-semibold text-gray-600 text-sm">Precio Final (Total ${data.pax} personas)</td>${groupCells}</tr></tbody></table><div class="mt-2 text-[10px] text-gray-400 text-center">* Precios sujetos a cambios y disponibilidad.</div></div>
+                        </div>
+                    </div>
+                </div>`;
+            document.getElementById('client-view-content').innerHTML = docHtml;
+            document.getElementById('client-view-container').classList.remove('hidden');
+        }
+
+        window.saveProposalToHistory = () => {
+            const data = window.getProposalData();
+            if(!data.clientName) return Swal.fire('Error', 'Falta nombre del cliente', 'error');
+            window.fsSaveProposal(data);
+            Swal.fire('Guardado', 'Cotización guardada exitosamente.', 'success');
+        }
+
+        window.loadProposal = (id) => {
+            const p = window.savedProposals.find(item => item.id == id);
+            if(!p) return;
+            document.getElementById('proposalId').value = p.id;
+            document.getElementById('clientName').value = p.clientName;
+            document.getElementById('arrivalDate').value = p.arrival;
+            document.getElementById('departureDate').value = p.departure;
+            document.getElementById('pax').value = p.pax;
+            document.getElementById('agentName').value = p.agent;
+            window.currentSelectedTours = p.tours.map(t => ({...t}));
+            window.renderSelectedToursTable();
+            document.getElementById('hotel-options-wrapper').innerHTML = '';
+            if(p.options && p.options.length > 0) {
+                p.options.forEach(opt => {
+                    window.addOptionGroup();
+                    const card = document.getElementById('hotel-options-wrapper').lastElementChild;
+                    card.querySelector('.hotel-margin-value').value = opt.margin;
+                    const container = card.querySelector('.hotel-segments-container');
+                    if(opt.segments) {
+                        opt.segments.forEach(seg => {
+                            const div = document.createElement('div');
+                            div.className = "bg-white border border-gray-200 p-2 rounded relative shadow-sm segment-row";
+                            const netTotal = seg.netPrice * seg.qty * seg.nights;
+                            div.dataset.netTotal = netTotal;
+                            const hotel = window.catalogHotels.find(h=>h.id==seg.id);
+                            const hotelName = hotel?.name || "Hotel Guardado";
+                            div.innerHTML = `
+                                <button onclick="this.closest('.segment-row').remove(); window.updateOptionTotals(this)" class="absolute top-1 right-1 text-red-400 text-xs">x</button>
+                                <div class="font-bold text-xs text-gray-700">${hotelName}</div>
+                                <div class="text-[10px] text-gray-500">${seg.room}</div>
+                                <div class="flex justify-between items-end mt-1"><div class="text-[10px] bg-gray-100 px-1 rounded">${seg.qty} Hab. x ${seg.nights} Noches</div><div class="text-xs font-mono text-teal-600">Neto: S/.${netTotal}</div></div>
+                                <input type="hidden" class="seg-hotel-id" value="${seg.id}"><input type="hidden" class="seg-room-name" value="${seg.room}"><input type="hidden" class="seg-qty" value="${seg.qty}"><input type="hidden" class="seg-nights" value="${seg.nights}"><input type="hidden" class="seg-net" value="${seg.netPrice}">
+                            `;
+                            container.appendChild(div);
+                        });
+                    }
+                    window.updateOptionTotals(card.querySelector('.hotel-margin-value'));
+                });
+            }
+            window.switchView('cotizacion');
+            Swal.fire({toast:true, position:'top-end', icon:'success', title:'Cotización cargada', showConfirmButton:false, timer:1500});
+        }
+
+        window.printProposal = (id) => { window.loadProposal(id); setTimeout(() => { window.generateProposal(); window.print(); }, 500); }
+        window.resetProposalForm = () => {
+            document.getElementById('proposal-form').reset();
+            document.getElementById('proposalId').value = '';
+            document.getElementById('hotel-options-wrapper').innerHTML = '';
+            window.currentSelectedTours = [];
+            window.renderSelectedToursTable();
+            window.addOptionGroup();
+        }
+    </script>
+</body>
+</html>
