@@ -47,10 +47,11 @@
                 box-shadow: none;
                 border: none;
             }
-            .print-grid-4 {
+            /* Forzar grid de 2 columnas en impresión para formato 2x2 */
+            .print-grid-2 {
                 display: grid !important;
-                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-                gap: 1rem !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 1.5rem !important;
             }
             .print-hide-overflow { overflow: visible !important; }
         }
@@ -89,6 +90,10 @@
             </div>
         </div>
     </nav>
+
+    <!-- DATALISTS GLOBALES -->
+    <datalist id="dl-hotels-global"></datalist>
+    <datalist id="dl-locations-global"></datalist>
 
     <div class="flex-grow relative">
         
@@ -168,7 +173,10 @@
                                 <div class="mb-3">
                                     <label class="text-xs font-bold text-gray-500 mb-1 block">Agregar Tour:</label>
                                     <div class="flex gap-2">
-                                        <select id="catalogToursSelect" class="form-input text-sm flex-grow"></select>
+                                        <!-- CAMBIO: Input con Datalist para búsqueda rápida -->
+                                        <input type="text" id="catalogToursInput" list="dl-tours-global" class="form-input text-sm flex-grow" placeholder="Buscar o escribir tour" oninput="window.checkTourMatch(this)">
+                                        <datalist id="dl-tours-global"></datalist>
+                                        
                                         <button type="button" onclick="window.addTourToSelection()" class="bg-teal-600 text-white px-3 rounded hover:bg-teal-700 font-bold text-sm whitespace-nowrap">
                                             <i class="fas fa-plus"></i> Agregar
                                         </button>
@@ -255,15 +263,32 @@
                                 <input type="hidden" id="newHotelImgBase64">
                                 <img id="hotelImgPreview" class="h-20 w-full object-cover mt-2 hidden rounded">
                             </div>
-                            <input type="text" id="newHotelAmenities" placeholder="Amenidades (sep. por comas)" class="form-input text-sm">
+                            
+                            <!-- CHECKBOXES PARA AMENIDADES -->
+                            <div class="border rounded p-2 bg-white">
+                                <label class="text-[10px] text-gray-500 block mb-1 font-bold">Amenidades / Servicios:</label>
+                                <div class="grid grid-cols-2 gap-2" id="amenities-checkbox-container">
+                                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="TV"><span class="text-xs text-gray-600">TV</span></label>
+                                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Piscina"><span class="text-xs text-gray-600">Piscina</span></label>
+                                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Aire Acondicionado"><span class="text-xs text-gray-600">Aire Acond.</span></label>
+                                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Ventilador"><span class="text-xs text-gray-600">Ventilador</span></label>
+                                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Piscina Privada"><span class="text-xs text-gray-600">Piscina Priv.</span></label>
+                                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Balcón"><span class="text-xs text-gray-600">Balcón</span></label>
+                                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Gimnasio"><span class="text-xs text-gray-600">Gimnasio</span></label>
+                                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Restaurante"><span class="text-xs text-gray-600">Restaurante</span></label>
+                                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Bar"><span class="text-xs text-gray-600">Bar</span></label>
+                                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Wifi"><span class="text-xs text-gray-600">Wifi</span></label>
+                                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="Cochera"><span class="text-xs text-gray-600">Cochera</span></label>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Gestión Habitaciones -->
                         <div class="bg-white border border-gray-200 p-3 rounded mb-3">
-                            <label class="text-xs font-bold text-gray-500 mb-1 block">Tipos de Habitación y Precios Corporativos</label>
+                            <label class="text-xs font-bold text-gray-500 mb-1 block">Habitaciones, Precios e Imágenes</label>
                             <table class="w-full text-xs text-left mb-2">
                                 <thead class="bg-gray-100 text-gray-500">
-                                    <tr><th class="p-1">Tipo</th><th class="p-1 w-12">Cap.</th><th class="p-1 w-20">Neto S/.</th><th class="p-1 w-6"></th></tr>
+                                    <tr><th class="p-1">Tipo</th><th class="p-1 w-12">Cap.</th><th class="p-1 w-20">Neto S/.</th><th class="p-1">Imagen</th><th class="p-1 w-6"></th></tr>
                                 </thead>
                                 <tbody id="hotel-rooms-body"></tbody>
                             </table>
@@ -396,6 +421,13 @@
 
             onSnapshot(hotelsRef, (snapshot) => {
                 window.catalogHotels = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Populate Datalists
+                const dlHotels = document.getElementById('dl-hotels-global');
+                const dlLocs = document.getElementById('dl-locations-global');
+                dlHotels.innerHTML = window.catalogHotels.map(h => `<option value="${h.name}">${h.zone}</option>`).join('');
+                const zones = [...new Set(window.catalogHotels.map(h => h.zone).filter(z=>z))];
+                dlLocs.innerHTML = zones.map(z => `<option value="${z}">`).join('');
+                
                 window.renderCatalogTables();
                 window.populateCatalogDropdowns();
                 checkLoaded();
@@ -460,32 +492,31 @@
         window.toggleForm = (id) => { document.getElementById(id).classList.toggle('hidden'); }
 
         // --- CATALOGO HOTELES ---
-        window.addRoomInputRow = (name='', cap=2, price=0) => {
+        window.addRoomInputRow = (name='', cap=2, price=0, img='') => {
             const tbody = document.getElementById('hotel-rooms-body');
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="p-1"><input type="text" class="w-full border p-1 text-xs room-name-input" placeholder="Nombre" value="${name}"></td>
                 <td class="p-1"><input type="number" class="w-full border p-1 text-xs room-cap-input" placeholder="Pax" value="${cap}"></td>
                 <td class="p-1"><input type="number" class="w-full border p-1 text-xs room-price-input" placeholder="S/." value="${price}"></td>
+                <td class="p-1">
+                    <input type="file" accept="image/*" class="w-full text-[10px]" onchange="window.handleRoomImageUpload(this)">
+                    <input type="hidden" class="room-img-input" value="${img}">
+                    ${img ? `<img src="${img}" class="h-8 w-8 object-cover mt-1 inline-block">` : ''}
+                </td>
                 <td class="p-1 text-center"><button onclick="this.closest('tr').remove()" class="text-red-500 text-xs">x</button></td>
             `;
             tbody.appendChild(tr);
         }
 
-        window.handleImageUpload = (input, previewId) => {
+        window.handleRoomImageUpload = (input) => {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const base64 = e.target.result;
-                    if(base64.length > 800000) {
-                        alert("Imagen muy grande. Use imágenes menores a 500KB.");
-                        input.value = "";
-                        return;
-                    }
-                    document.getElementById('newHotelImgBase64').value = base64;
-                    const preview = document.getElementById(previewId);
-                    preview.src = base64;
-                    preview.classList.remove('hidden');
+                    if(base64.length > 800000) { alert("Imagen muy grande. Max 800kb."); input.value=""; return; }
+                    const container = input.parentElement;
+                    container.querySelector('.room-img-input').value = base64;
                 };
                 reader.readAsDataURL(input.files[0]);
             }
@@ -500,6 +531,9 @@
                 document.getElementById('hotel-rooms-body').innerHTML = ''; 
                 document.getElementById('newHotelImgFile').value = '';
                 
+                // Clear checkboxes
+                document.querySelectorAll('.amenity-checkbox').forEach(cb => cb.checked = false);
+
                 if(isEdit) {
                     const h = window.catalogHotels.find(x => x.id == id);
                     document.getElementById('newHotelName').value = h.name;
@@ -508,10 +542,17 @@
                     const preview = document.getElementById('hotelImgPreview');
                     preview.src = h.img || '';
                     if(h.img) preview.classList.remove('hidden'); else preview.classList.add('hidden');
-                    document.getElementById('newHotelAmenities').value = h.amenities ? h.amenities.join(', ') : '';
+                    
+                    // Set checkboxes from array
+                    if (h.amenities) {
+                        h.amenities.forEach(am => {
+                            const cb = document.querySelector(`.amenity-checkbox[value="${am}"]`);
+                            if (cb) cb.checked = true;
+                        });
+                    }
                     
                     if(h.rooms && h.rooms.length > 0) {
-                        h.rooms.forEach(r => window.addRoomInputRow(r.name, r.capacity, r.price));
+                        h.rooms.forEach(r => window.addRoomInputRow(r.name, r.capacity, r.price, r.img));
                     } else {
                         window.addRoomInputRow();
                     }
@@ -520,7 +561,6 @@
                     document.getElementById('newHotelZone').value = '';
                     document.getElementById('newHotelImgBase64').value = '';
                     document.getElementById('hotelImgPreview').classList.add('hidden');
-                    document.getElementById('newHotelAmenities').value = '';
                     window.addRoomInputRow();
                 }
             } else {
@@ -549,15 +589,19 @@
                     const rName = tr.querySelector('.room-name-input').value;
                     const rCap = tr.querySelector('.room-cap-input').value;
                     const rPrice = tr.querySelector('.room-price-input').value;
-                    if(rName) rooms.push({ name: rName, capacity: parseInt(rCap)||1, price: parseFloat(rPrice)||0 });
+                    const rImg = tr.querySelector('.room-img-input').value;
+                    if(rName) rooms.push({ name: rName, capacity: parseInt(rCap)||1, price: parseFloat(rPrice)||0, img: rImg });
                 });
+
+                // Get amenities from checkboxes
+                const amenities = Array.from(document.querySelectorAll('.amenity-checkbox:checked')).map(cb => cb.value);
 
                 const imgBase64 = document.getElementById('newHotelImgBase64').value || placeholderImg;
                 const data = {
                     name: name,
                     zone: document.getElementById('newHotelZone').value,
                     img: imgBase64,
-                    amenities: document.getElementById('newHotelAmenities').value.split(',').map(s=>s.trim()),
+                    amenities: amenities,
                     rooms: rooms
                 };
 
@@ -593,22 +637,51 @@
         });
 
         window.populateCatalogDropdowns = () => {
-            const s = document.getElementById('catalogToursSelect');
-            if(s) s.innerHTML = window.catalogTours.map(t => `<option value="${t.id}">${t.name} (Neto: S/.${t.price_net})</option>`).join('');
+            const dl = document.getElementById('dl-tours-global');
+            if(dl) dl.innerHTML = window.catalogTours.map(t => `<option value="${t.name}">Neto: S/.${t.price_net}</option>`).join('');
+        }
+
+        window.checkTourMatch = (input) => {
+            const val = input.value;
+            const tour = window.catalogTours.find(t => t.name === val);
+            if(tour) input.dataset.selectedId = tour.id;
+            else delete input.dataset.selectedId;
         }
 
         window.addTourToSelection = () => {
-            const id = document.getElementById('catalogToursSelect').value;
-            const t = window.catalogTours.find(x => x.id == id);
-            if(!t) return;
+            const input = document.getElementById('catalogToursInput');
+            const val = input.value;
+            if(!val) return;
+            
+            // Try to find by ID (set by checkMatch) or by Name match
+            let tour = null;
+            if(input.dataset.selectedId) {
+                tour = window.catalogTours.find(t => t.id == input.dataset.selectedId);
+            } else {
+                tour = window.catalogTours.find(t => t.name.toLowerCase() === val.toLowerCase());
+            }
+
+            // Default for custom
+            let tourData = {
+                id: Date.now(),
+                name: val,
+                price_net: 0,
+                desc: 'Tour personalizado'
+            };
+
+            if(tour) {
+                tourData = { ...tour };
+            }
             
             window.currentSelectedTours.push({
-                ...t, 
-                price_net: t.price_net,
+                ...tourData, 
+                price_net: tourData.price_net, // Editable copy
                 customMargin: 20, 
                 dayLabel: "Día 1" 
             });
             window.renderSelectedToursTable();
+            input.value = ''; // Clear input
+            delete input.dataset.selectedId;
         }
 
         window.renderSelectedToursTable = () => {
@@ -648,27 +721,14 @@
         }
 
         window.populateLocationSelect = (select) => {
-            const zones = [...new Set(window.catalogHotels.map(h => h.zone))];
-            select.innerHTML = '<option value="">-- Ubicación --</option>' + zones.map(z => `<option value="${z}">${z}</option>`).join('');
-        }
-
-        window.filterHotelsByLocation = (locationSelect) => {
-            const wrapper = locationSelect.closest('div'); // The add container
-            const hotelSelect = wrapper.querySelector('.add-hotel-select');
-            const loc = locationSelect.value;
-            
-            hotelSelect.innerHTML = '<option value="">-- Seleccionar Hotel --</option>';
-            if(loc) {
-                const hotels = window.catalogHotels.filter(h => h.zone === loc);
-                hotelSelect.innerHTML += hotels.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
-            }
-            window.updateAddRoomSelect(hotelSelect); 
+            // Se usa el datalist global ahora
         }
 
         window.addOptionGroup = () => {
             const wrapper = document.getElementById('hotel-options-wrapper');
             if(wrapper.children.length>=4) return Swal.fire('Límite 4 opciones', '', 'warning');
             const letter = String.fromCharCode(65 + wrapper.children.length);
+            const cardId = Date.now() + Math.random().toString(36).substr(2, 5); // ID único para datalist local si se usara
             
             const div = document.createElement('div');
             div.className = "bg-gray-50 p-4 rounded-lg border border-gray-200 relative shadow-sm option-card group";
@@ -683,15 +743,13 @@
                 <div class="bg-white p-3 rounded border border-dashed border-gray-300">
                     <p class="text-[10px] font-bold text-gray-400 uppercase mb-2">Agregar Alojamiento</p>
                     
-                    <select class="form-input text-xs py-1 h-8 mb-2 location-select" onchange="window.filterHotelsByLocation(this)"></select>
+                    <input type="text" class="form-input text-xs py-1 h-8 mb-2 location-input" list="dl-locations-global" placeholder="Filtrar por Ubicación (Opcional)" onchange="window.filterHotelsByLocation(this)">
                     
-                    <select class="form-input text-xs py-1 h-8 mb-2 add-hotel-select" onchange="window.updateAddRoomSelect(this)">
-                        <option value="">-- Seleccionar Hotel --</option>
-                    </select>
+                    <input type="text" class="form-input text-xs py-1 h-8 mb-2 add-hotel-input" list="dl-hotels-global" placeholder="Buscar o Escribir Hotel" oninput="window.checkHotelMatch(this)">
                     
-                    <select class="form-input text-xs py-1 h-8 mb-2 add-room-select" disabled onchange="window.calculateSegmentPreview(this)">
-                        <option>-- Habitaciones --</option>
-                    </select>
+                    <!-- Datalist para habitaciones, dinámico por JS -->
+                    <input type="text" class="form-input text-xs py-1 h-8 mb-2 add-room-input" list="dl-rooms-${cardId}" placeholder="Tipo Habitación" oninput="window.checkRoomMatch(this)">
+                    <datalist id="dl-rooms-${cardId}"></datalist>
                     
                     <div class="flex gap-2 mb-2">
                         <div class="w-1/2">
@@ -707,7 +765,7 @@
                     <div class="grid grid-cols-2 gap-2 mb-2 bg-gray-50 p-2 rounded">
                         <div>
                             <label class="text-[9px] text-gray-500 font-bold">Costo Neto (x Noche)</label>
-                            <input type="text" class="text-xs bg-transparent border-none p-0 w-full font-mono text-gray-600 add-net-display" value="S/.0" readonly>
+                            <input type="number" class="form-input text-xs py-0 h-6 w-full add-net-price" value="0" placeholder="S/." onchange="window.calculateSegmentPreview(this)">
                         </div>
                         <div>
                             <label class="text-[9px] text-gray-500 font-bold">Ganancia (x Noche/Hab)</label>
@@ -723,106 +781,156 @@
                 </div>
             `;
             wrapper.appendChild(div);
-            window.populateLocationSelect(div.querySelector('.location-select'));
         }
 
-        window.updateAddRoomSelect = (hotelSelect) => {
-            const wrapper = hotelSelect.closest('div');
-            const roomSelect = wrapper.querySelector('.add-room-select');
-            const hotelId = hotelSelect.value;
-            roomSelect.innerHTML = '<option value="">-- Habitaciones --</option>'; 
-            roomSelect.disabled = true;
-            if(!hotelId) return;
-            const hotel = window.catalogHotels.find(h => h.id == hotelId);
-            if(hotel && hotel.rooms && hotel.rooms.length > 0) {
-                roomSelect.disabled = false;
-                hotel.rooms.forEach((r, idx) => {
-                    const opt = document.createElement('option');
-                    opt.value = idx; 
-                    opt.text = `${r.name} (Cap: ${r.capacity})`;
-                    opt.dataset.price = r.price;
-                    roomSelect.appendChild(opt);
-                });
+        window.filterHotelsByLocation = (locInput) => {
+            const val = locInput.value;
+            const dl = document.getElementById('dl-hotels-global');
+            if(!val) {
+                // Reset to all
+                dl.innerHTML = window.catalogHotels.map(h => `<option value="${h.name}">${h.zone}</option>`).join('');
+                return;
             }
-            window.calculateSegmentPreview(hotelSelect);
+            const filtered = window.catalogHotels.filter(h => h.zone.toLowerCase().includes(val.toLowerCase()));
+            dl.innerHTML = filtered.map(h => `<option value="${h.name}">${h.zone}</option>`).join('');
+        }
+
+        window.checkHotelMatch = (input) => {
+            const val = input.value;
+            const card = input.closest('.option-card');
+            const roomDatalist = card.querySelector('datalist');
+            roomDatalist.innerHTML = ''; // Clear prev options
+            
+            // Find matched hotel by name
+            const hotel = window.catalogHotels.find(h => h.name === val);
+            
+            if (hotel) {
+                input.dataset.selectedId = hotel.id;
+                // Populate rooms
+                if (hotel.rooms) {
+                    roomDatalist.innerHTML = hotel.rooms.map(r => `<option value="${r.name}">Cap: ${r.capacity} | S/.${r.price}</option>`).join('');
+                }
+            } else {
+                delete input.dataset.selectedId; // It's a custom hotel
+            }
+        }
+
+        window.checkRoomMatch = (input) => {
+            const val = input.value;
+            const card = input.closest('.option-card');
+            const hotelInput = card.querySelector('.add-hotel-input');
+            const hotelId = hotelInput.dataset.selectedId;
+            
+            if (hotelId) {
+                const hotel = window.catalogHotels.find(h => h.id == hotelId);
+                const room = hotel.rooms.find(r => r.name === val);
+                if (room) {
+                    const priceInput = card.querySelector('.add-net-price');
+                    priceInput.value = room.price;
+                    window.calculateSegmentPreview(input);
+                }
+            }
         }
 
         window.calculateSegmentPreview = (elem) => {
             const wrapper = elem.closest('.bg-white');
-            const roomSelect = wrapper.querySelector('.add-room-select');
             const qty = parseInt(wrapper.querySelector('.add-qty').value) || 1;
             const nights = parseInt(wrapper.querySelector('.add-nights').value) || 1;
-            const marginPerNight = parseFloat(wrapper.querySelector('.add-margin').value) || 0;
+            const price = parseFloat(wrapper.querySelector('.add-net-price').value) || 0;
+            const margin = parseFloat(wrapper.querySelector('.add-margin').value) || 0;
             
-            let pricePerNight = 0;
-            if (roomSelect.selectedIndex > 0) {
-                pricePerNight = parseFloat(roomSelect.options[roomSelect.selectedIndex].dataset.price) || 0;
-            }
-
-            // Calculation: (Price Per Night + Margin Per Night) * Nights * Quantity Rooms
-            const saleTotal = (pricePerNight + marginPerNight) * nights * qty;
-
-            wrapper.querySelector('.add-net-display').value = `S/.${pricePerNight.toFixed(2)}`;
+            const saleTotal = (price + margin) * nights * qty;
             wrapper.querySelector('.add-total-display').innerText = `S/.${saleTotal.toFixed(2)}`;
         }
 
         window.commitHotelSegment = (btn) => {
             const wrapper = btn.closest('.bg-white');
-            const card = btn.closest('.option-card');
-            const container = card.querySelector('.hotel-segments-container');
-            const hotelSelect = wrapper.querySelector('.add-hotel-select');
-            const roomSelect = wrapper.querySelector('.add-room-select');
-            const qty = parseInt(wrapper.querySelector('.add-qty').value) || 1;
-            const nights = parseInt(wrapper.querySelector('.add-nights').value) || 1;
-            const marginPerNight = parseFloat(wrapper.querySelector('.add-margin').value) || 0;
-            const hotelId = hotelSelect.value;
-            const roomIdx = roomSelect.value;
+            const container = btn.closest('.option-card').querySelector('.hotel-segments-container');
             
-            if(!hotelId || roomSelect.disabled || roomSelect.selectedIndex === 0) return Swal.fire('Error', 'Seleccione hotel y habitación', 'warning');
+            const hotelName = wrapper.querySelector('.add-hotel-input').value;
+            const roomName = wrapper.querySelector('.add-room-input').value;
+            const qty = wrapper.querySelector('.add-qty').value;
+            const nights = wrapper.querySelector('.add-nights').value;
+            const price = wrapper.querySelector('.add-net-price').value;
+            const margin = wrapper.querySelector('.add-margin').value;
+            const hotelId = wrapper.querySelector('.add-hotel-input').dataset.selectedId || ''; // Empty if custom
 
-            const hotel = window.catalogHotels.find(h => h.id == hotelId);
-            const room = hotel.rooms[roomIdx];
-            
-            // Core Calculation for Segment
-            const netTotal = room.price * nights * qty;
-            const saleTotal = (room.price + marginPerNight) * nights * qty;
+            if(!hotelName || !roomName) return Swal.fire('Faltan datos', 'Ingrese hotel y habitación', 'warning');
+
+            const saleTotal = (parseFloat(price) + parseFloat(margin)) * parseFloat(nights) * parseFloat(qty);
 
             const div = document.createElement('div');
             div.className = "bg-white border border-gray-200 p-2 rounded relative shadow-sm segment-row";
-            div.dataset.sellTotal = saleTotal; 
+            div.dataset.sellTotal = saleTotal;
             
             div.innerHTML = `
-                <button onclick="this.closest('.segment-row').remove(); window.updateOptionTotals(this)" class="absolute top-1 right-1 text-red-400 text-xs">x</button>
-                <div class="font-bold text-xs text-gray-700">${hotel.name}</div>
-                <div class="text-[10px] text-gray-500">${room.name}</div>
+                <div class="absolute top-1 right-1 flex gap-1">
+                    <button onclick="window.editHotelSegment(this)" class="text-blue-400 text-xs hover:text-blue-600"><i class="fas fa-pencil-alt"></i></button>
+                    <button onclick="this.closest('.segment-row').remove(); window.updateOptionTotals(this)" class="text-red-400 text-xs hover:text-red-600"><i class="fas fa-trash"></i></button>
+                </div>
+                <div class="font-bold text-xs text-gray-700">${hotelName}</div>
+                <div class="text-[10px] text-gray-500">${roomName}</div>
                 <div class="flex justify-between items-end mt-1">
                     <div class="text-[10px] bg-gray-100 px-1 rounded">${qty} Hab. x ${nights} Ns</div>
                     <div class="text-xs font-bold text-teal-700">Venta: S/.${saleTotal.toFixed(2)}</div>
                 </div>
-                <input type="hidden" class="seg-hotel-id" value="${hotel.id}">
-                <input type="hidden" class="seg-room-name" value="${room.name}">
+                <!-- Hidden fields for saving/editing -->
+                <input type="hidden" class="seg-hotel-id" value="${hotelId}">
+                <input type="hidden" class="seg-hotel-name" value="${hotelName}">
+                <input type="hidden" class="seg-room-name" value="${roomName}">
                 <input type="hidden" class="seg-qty" value="${qty}">
                 <input type="hidden" class="seg-nights" value="${nights}">
-                <input type="hidden" class="seg-net" value="${room.price}">
-                <input type="hidden" class="seg-margin" value="${marginPerNight}">
+                <input type="hidden" class="seg-net" value="${price}">
+                <input type="hidden" class="seg-margin" value="${margin}">
             `;
             container.appendChild(div);
             window.updateOptionTotals(btn);
+            
+            // Clear specific fields but maybe leave hotel/dates for convenience? Let's clear room mostly.
+            wrapper.querySelector('.add-room-input').value = '';
+            wrapper.querySelector('.add-net-price').value = '0';
+        }
+
+        window.editHotelSegment = (btn) => {
+            const row = btn.closest('.segment-row');
+            const card = btn.closest('.option-card');
+            const wrapper = card.querySelector('.bg-white.p-3'); // The add form
+
+            // Extract data
+            const hName = row.querySelector('.seg-hotel-name').value;
+            const hId = row.querySelector('.seg-hotel-id').value;
+            const rName = row.querySelector('.seg-room-name').value;
+            const qty = row.querySelector('.seg-qty').value;
+            const nights = row.querySelector('.seg-nights').value;
+            const price = row.querySelector('.seg-net').value;
+            const margin = row.querySelector('.seg-margin').value;
+
+            // Populate form
+            const hInput = wrapper.querySelector('.add-hotel-input');
+            hInput.value = hName;
+            if(hId) hInput.dataset.selectedId = hId; else delete hInput.dataset.selectedId;
+            
+            // Trigger match to populate room datalist
+            window.checkHotelMatch(hInput); 
+
+            wrapper.querySelector('.add-room-input').value = rName;
+            wrapper.querySelector('.add-qty').value = qty;
+            wrapper.querySelector('.add-nights').value = nights;
+            wrapper.querySelector('.add-net-price').value = price;
+            wrapper.querySelector('.add-margin').value = margin;
+
+            // Update preview numbers
+            window.calculateSegmentPreview(hInput);
+
+            // Remove the row (it's "moved" to edit area)
+            row.remove();
+            window.updateOptionTotals(wrapper); // Recalc totals after removal
         }
 
         window.updateOptionTotals = (elem) => {
-            const card = elem.closest('.option-card');
-            if(!card) return;
-            const pax = parseInt(document.getElementById('pax').value) || 1;
-            let totalSellGroup = 0;
-            card.querySelectorAll('.segment-row').forEach(row => { totalSellGroup += parseFloat(row.dataset.sellTotal)||0; });
-            
-            // Display Total Per Person for the Accommodation part
-            const totalSellPP = totalSellGroup / pax;
-            const displayEl = card.querySelector('.option-total-display');
-            if (displayEl) {
-                displayEl.innerText = `S/.${totalSellPP.toFixed(2)}`;
-            }
+            // No display update needed in admin panel per previous request, 
+            // but logic might be needed for internal checks. 
+            // Left empty or can log for debug.
         }
 
         window.renderCatalogTables = () => {
@@ -889,27 +997,37 @@
                     totalOptionSellGroup += sellTotal;
                     
                     const hId = row.querySelector('.seg-hotel-id').value;
+                    const hName = row.querySelector('.seg-hotel-name').value;
                     const rName = row.querySelector('.seg-room-name').value;
                     const qty = row.querySelector('.seg-qty').value;
                     const n = row.querySelector('.seg-nights').value;
                     const net = row.querySelector('.seg-net').value;
                     const margin = row.querySelector('.seg-margin').value;
-                    const hotel = window.catalogHotels.find(x => x.id == hId) || {name: '?', img: placeholderImg};
+                    
+                    // Lookup hotel to get the right room image
+                    const hotel = window.catalogHotels.find(x => x.id == hId);
+                    
+                    // Logic to find specific room image
+                    let displayImg = placeholderImg;
+                    if(hotel && hotel.rooms) {
+                        const roomObj = hotel.rooms.find(r => r.name == rName);
+                        if(roomObj && roomObj.img) displayImg = roomObj.img;
+                    }
 
                     segmentsHtml += `
                         <div class="flex gap-3 mb-3 border-b border-gray-100 last:border-0 pb-3 last:pb-0">
                             <div class="w-24 h-32 rounded-lg overflow-hidden shadow relative flex-shrink-0">
-                                <img src="${hotel.img}" class="w-full h-full object-cover">
-                                <div class="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-1.5"><p class="text-white text-[9px] font-bold leading-tight line-clamp-2">${hotel.name}</p></div>
+                                <img src="${displayImg}" class="w-full h-full object-cover">
+                                <div class="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-1.5"><p class="text-white text-[9px] font-bold leading-tight line-clamp-2">${hName}</p></div>
                                 <div class="absolute top-1 right-1 bg-white/90 text-[9px] px-1.5 py-0.5 rounded font-bold shadow text-teal-800">${n} Ns</div>
                             </div>
                             <div class="flex-1 flex flex-col justify-center">
-                                <div class="mb-1"><p class="text-[9px] text-gray-400 uppercase tracking-wide">Hotel</p><p class="text-xs font-bold text-gray-800 leading-tight">${hotel.name}</p></div>
+                                <div class="mb-1"><p class="text-[9px] text-gray-400 uppercase tracking-wide">Hotel</p><p class="text-xs font-bold text-gray-800 leading-tight">${hName}</p></div>
                                 <div class="mb-1"><p class="text-[9px] text-gray-400 uppercase tracking-wide">Habitación</p><p class="text-xs text-gray-700">${rName}</p></div>
                                 <div><span class="text-[9px] bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded border border-teal-100">${qty} ${qty > 1 ? 'Habs' : 'Hab'}</span></div>
                             </div>
                         </div>`;
-                    segments.push({id: hId, room: rName, qty, nights: n, netPrice: net, margin: margin});
+                    segments.push({id: hId, name: hName, room: rName, qty, nights: n, netPrice: net, margin: margin});
                 });
 
                 const grandTotalGroup = totalOptionSellGroup + (totalToursVenta * pax);
@@ -948,7 +1066,7 @@
                 toursHtml += '</div>';
             } else { toursHtml = '<p class="text-gray-400 italic text-xs p-4">Sin actividades extra.</p>'; }
 
-            const gridClass = data.options.length === 4 ? 'grid-cols-4 print-grid-4' : `grid-cols-${Math.min(data.options.length, 3)}`;
+            const gridClass = 'grid-cols-1 sm:grid-cols-2 print-grid-2';
             const headerCells = data.options.map(opt => `<th class="p-3 border text-center bg-gray-100 text-gray-700 text-sm">OPCIÓN ${opt.letter}</th>`).join('');
             const ppCells = data.options.map(opt => `<td class="p-3 border text-center font-bold text-teal-700 text-sm">S/.${opt.pricePP.toLocaleString('es-PE', {minimumFractionDigits:0})}</td>`).join('');
             const groupCells = data.options.map(opt => `<td class="p-3 border text-center font-bold text-gray-800 text-base">S/.${opt.priceGroup.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>`).join('');
@@ -1009,29 +1127,32 @@
                 p.options.forEach(opt => {
                     window.addOptionGroup();
                     const card = document.getElementById('hotel-options-wrapper').lastElementChild;
-                    // No top-level margin loading needed as it is per segment now
                     const container = card.querySelector('.hotel-segments-container');
                     if(opt.segments) {
                         opt.segments.forEach(seg => {
                             const div = document.createElement('div');
                             div.className = "bg-white border border-gray-200 p-2 rounded relative shadow-sm segment-row";
-                            // Recalculate based on saved margin logic
                             const netTotal = seg.netPrice * seg.qty * seg.nights;
-                            const saleTotal = (seg.netPrice + (parseFloat(seg.margin)||0)) * seg.qty * seg.nights;
+                            const saleTotal = (parseFloat(seg.netPrice) + (parseFloat(seg.margin)||0)) * seg.qty * seg.nights;
                             div.dataset.sellTotal = saleTotal;
-                            const hotel = window.catalogHotels.find(h=>h.id==seg.id);
-                            const hotelName = hotel?.name || "Hotel Guardado";
+                            
+                            // Use stored name if custom or not found
+                            const hotelName = seg.name || "Hotel";
+                            
                             div.innerHTML = `
-                                <button onclick="this.closest('.segment-row').remove(); window.updateOptionTotals(this)" class="absolute top-1 right-1 text-red-400 text-xs">x</button>
+                                <div class="absolute top-1 right-1 flex gap-1">
+                                    <button onclick="window.editHotelSegment(this)" class="text-blue-400 text-xs hover:text-blue-600"><i class="fas fa-pencil-alt"></i></button>
+                                    <button onclick="this.closest('.segment-row').remove(); window.updateOptionTotals(this)" class="text-red-400 text-xs hover:text-red-600"><i class="fas fa-trash"></i></button>
+                                </div>
                                 <div class="font-bold text-xs text-gray-700">${hotelName}</div>
                                 <div class="text-[10px] text-gray-500">${seg.room}</div>
                                 <div class="flex justify-between items-end mt-1"><div class="text-[10px] bg-gray-100 px-1 rounded">${seg.qty} Hab. x ${seg.nights} Noches</div><div class="text-xs font-bold text-teal-700">Venta: S/.${saleTotal.toFixed(2)}</div></div>
-                                <input type="hidden" class="seg-hotel-id" value="${seg.id}"><input type="hidden" class="seg-room-name" value="${seg.room}"><input type="hidden" class="seg-qty" value="${seg.qty}"><input type="hidden" class="seg-nights" value="${seg.nights}"><input type="hidden" class="seg-net" value="${seg.netPrice}"><input type="hidden" class="seg-margin" value="${seg.margin||0}">
+                                <input type="hidden" class="seg-hotel-id" value="${seg.id}"><input type="hidden" class="seg-hotel-name" value="${seg.name}"><input type="hidden" class="seg-room-name" value="${seg.room}"><input type="hidden" class="seg-qty" value="${seg.qty}"><input type="hidden" class="seg-nights" value="${seg.nights}"><input type="hidden" class="seg-net" value="${seg.netPrice}"><input type="hidden" class="seg-margin" value="${seg.margin||0}">
                             `;
                             container.appendChild(div);
                         });
                     }
-                    window.updateOptionTotals(card.querySelector('.add-hotel-select')); 
+                    window.updateOptionTotals(card.querySelector('.add-hotel-input')); 
                 });
             }
             window.switchView('cotizacion');
