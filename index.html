@@ -352,25 +352,43 @@
                             <input type="text" id="newTourDesc" placeholder="Descripción breve (marketing)" class="form-input mb-2 text-sm">
                         </div>
                         
-                        <!-- IMAGEN VERTICAL DEL TOUR (MEJORADO) -->
+                        <!-- 3 IMÁGENES VERTICALES DEL TOUR -->
                         <div class="mb-3">
-                            <label class="text-xs font-bold text-gray-700 block mb-1">Imagen Vertical (Portada)</label>
-                            <div class="relative border-2 border-dashed border-gray-300 bg-white rounded-lg p-4 text-center hover:bg-blue-50 transition group">
-                                <input type="file" id="newTourImgFile" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleTourImageUpload(this)">
-                                
-                                <div id="tourUploadPlaceholder" class="pointer-events-none">
-                                    <i class="fas fa-cloud-upload-alt text-gray-400 text-3xl mb-2"></i>
-                                    <p class="text-xs text-gray-500 font-semibold">Click o arrastra imagen aquí</p>
-                                    <p class="text-[9px] text-gray-400 mt-1">Formato Vertical recomendado (Max 1MB)</p>
+                            <label class="text-xs font-bold text-gray-700 block mb-1">Galería de Imágenes (Verticales)</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <!-- IMG 1 -->
+                                <div class="relative border-2 border-dashed border-gray-300 bg-white rounded-lg h-32 flex items-center justify-center hover:bg-blue-50 transition group">
+                                    <input type="file" id="newTourImgFile1" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleTourImageUpload(this, 1)">
+                                    <div id="tourUploadPlaceholder1" class="pointer-events-none text-center">
+                                        <span class="text-[9px] text-gray-400 font-bold block">FOTO 1</span>
+                                        <i class="fas fa-plus text-gray-300"></i>
+                                    </div>
+                                    <img id="tourImgPreview1" class="absolute inset-0 w-full h-full object-cover rounded hidden pointer-events-none">
+                                    <button type="button" onclick="window.clearTourImage(1)" class="absolute top-0 right-0 bg-red-500 text-white rounded-bl-lg w-5 h-5 flex items-center justify-center text-[10px] z-20 hidden" id="btnDelTourImg1">×</button>
+                                    <input type="hidden" id="newTourImgBase64_1">
                                 </div>
-
-                                <div id="tourPreviewContainer" class="hidden relative z-20">
-                                    <img id="tourImgPreview" class="h-48 w-32 object-cover rounded shadow-md mx-auto border border-gray-200">
-                                    <button type="button" onclick="window.clearTourImage(event)" class="absolute top-0 right-10 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:bg-red-600 transition" title="Eliminar imagen">
-                                        <i class="fas fa-times"></i>
-                                    </button>
+                                <!-- IMG 2 -->
+                                <div class="relative border-2 border-dashed border-gray-300 bg-white rounded-lg h-32 flex items-center justify-center hover:bg-blue-50 transition group">
+                                    <input type="file" id="newTourImgFile2" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleTourImageUpload(this, 2)">
+                                    <div id="tourUploadPlaceholder2" class="pointer-events-none text-center">
+                                        <span class="text-[9px] text-gray-400 font-bold block">FOTO 2</span>
+                                        <i class="fas fa-plus text-gray-300"></i>
+                                    </div>
+                                    <img id="tourImgPreview2" class="absolute inset-0 w-full h-full object-cover rounded hidden pointer-events-none">
+                                    <button type="button" onclick="window.clearTourImage(2)" class="absolute top-0 right-0 bg-red-500 text-white rounded-bl-lg w-5 h-5 flex items-center justify-center text-[10px] z-20 hidden" id="btnDelTourImg2">×</button>
+                                    <input type="hidden" id="newTourImgBase64_2">
                                 </div>
-                                <input type="hidden" id="newTourImgBase64">
+                                <!-- IMG 3 -->
+                                <div class="relative border-2 border-dashed border-gray-300 bg-white rounded-lg h-32 flex items-center justify-center hover:bg-blue-50 transition group">
+                                    <input type="file" id="newTourImgFile3" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleTourImageUpload(this, 3)">
+                                    <div id="tourUploadPlaceholder3" class="pointer-events-none text-center">
+                                        <span class="text-[9px] text-gray-400 font-bold block">FOTO 3</span>
+                                        <i class="fas fa-plus text-gray-300"></i>
+                                    </div>
+                                    <img id="tourImgPreview3" class="absolute inset-0 w-full h-full object-cover rounded hidden pointer-events-none">
+                                    <button type="button" onclick="window.clearTourImage(3)" class="absolute top-0 right-0 bg-red-500 text-white rounded-bl-lg w-5 h-5 flex items-center justify-center text-[10px] z-20 hidden" id="btnDelTourImg3">×</button>
+                                    <input type="hidden" id="newTourImgBase64_3">
+                                </div>
                             </div>
                         </div>
 
@@ -663,32 +681,35 @@
             }
         }
         
-        window.handleTourImageUpload = (input) => {
+        window.handleTourImageUpload = (input, index) => {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const base64 = e.target.result;
                     if(base64.length > 1000000) { alert("Imagen muy grande. Intente optimizarla (Max 1MB)."); input.value=""; return; }
                     
-                    document.getElementById('newTourImgBase64').value = base64;
-                    document.getElementById('tourImgPreview').src = base64;
-                    
-                    // Toggle UI
-                    document.getElementById('tourUploadPlaceholder').classList.add('hidden');
-                    document.getElementById('tourPreviewContainer').classList.remove('hidden');
+                    document.getElementById(`newTourImgBase64_${index}`).value = base64;
+                    const preview = document.getElementById(`tourImgPreview${index}`);
+                    preview.src = base64;
+                    preview.classList.remove('hidden');
+                    document.getElementById(`tourUploadPlaceholder${index}`).classList.add('hidden');
+                    document.getElementById(`btnDelTourImg${index}`).classList.remove('hidden');
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         }
 
-        window.clearTourImage = (e) => {
-            if(e) e.preventDefault(); // Evitar que se abra el selector de archivos al hacer click en borrar
-            document.getElementById('newTourImgFile').value = '';
-            document.getElementById('newTourImgBase64').value = '';
-            document.getElementById('tourImgPreview').src = '';
+        window.clearTourImage = (index) => {
+            // No prevenimos default aqui porque es un button normal fuera del input
+            document.getElementById(`newTourImgFile${index}`).value = '';
+            document.getElementById(`newTourImgBase64_${index}`).value = '';
             
-            document.getElementById('tourUploadPlaceholder').classList.remove('hidden');
-            document.getElementById('tourPreviewContainer').classList.add('hidden');
+            const preview = document.getElementById(`tourImgPreview${index}`);
+            preview.src = '';
+            preview.classList.add('hidden');
+            
+            document.getElementById(`tourUploadPlaceholder${index}`).classList.remove('hidden');
+            document.getElementById(`btnDelTourImg${index}`).classList.add('hidden');
         }
 
         window.editCatalogItem = (type, id) => {
@@ -745,7 +766,9 @@
                 document.getElementById('tour-route-container').innerHTML = '';
                 document.getElementById('tour-includes-container').innerHTML = '';
                 document.getElementById('tour-not-includes-container').innerHTML = '';
-                window.clearTourImage(null); // Reset imagen UI
+                window.clearTourImage(1);
+                window.clearTourImage(2);
+                window.clearTourImage(3);
 
                 if(isEdit) {
                     const t = window.catalogTours.find(x => x.id == id);
@@ -755,12 +778,29 @@
                     document.getElementById('newTourStart').value = t.startTime || '';
                     document.getElementById('newTourEnd').value = t.endTime || '';
                     
-                    // Cargar Imagen si existe
-                    if(t.img) {
-                        document.getElementById('newTourImgBase64').value = t.img;
-                        document.getElementById('tourImgPreview').src = t.img;
-                        document.getElementById('tourUploadPlaceholder').classList.add('hidden');
-                        document.getElementById('tourPreviewContainer').classList.remove('hidden');
+                    // Cargar Imágenes (Soporte Legacy single img y Nuevo Array)
+                    const imgs = t.images || (t.img ? [t.img] : []);
+                    
+                    if(imgs[0]) {
+                        document.getElementById('newTourImgBase64_1').value = imgs[0];
+                        document.getElementById('tourImgPreview1').src = imgs[0];
+                        document.getElementById('tourImgPreview1').classList.remove('hidden');
+                        document.getElementById('tourUploadPlaceholder1').classList.add('hidden');
+                        document.getElementById('btnDelTourImg1').classList.remove('hidden');
+                    }
+                    if(imgs[1]) {
+                        document.getElementById('newTourImgBase64_2').value = imgs[1];
+                        document.getElementById('tourImgPreview2').src = imgs[1];
+                        document.getElementById('tourImgPreview2').classList.remove('hidden');
+                        document.getElementById('tourUploadPlaceholder2').classList.add('hidden');
+                        document.getElementById('btnDelTourImg2').classList.remove('hidden');
+                    }
+                    if(imgs[2]) {
+                        document.getElementById('newTourImgBase64_3').value = imgs[2];
+                        document.getElementById('tourImgPreview3').src = imgs[2];
+                        document.getElementById('tourImgPreview3').classList.remove('hidden');
+                        document.getElementById('tourUploadPlaceholder3').classList.add('hidden');
+                        document.getElementById('btnDelTourImg3').classList.remove('hidden');
                     }
 
                     // Cargar listas
@@ -819,7 +859,15 @@
                     return Array.from(container.querySelectorAll('.dynamic-list-check:checked')).map(cb => cb.value);
                 };
 
-                const imgBase64 = document.getElementById('newTourImgBase64').value || '';
+                // Recopilar 3 imágenes
+                const images = [];
+                const img1 = document.getElementById('newTourImgBase64_1').value;
+                const img2 = document.getElementById('newTourImgBase64_2').value;
+                const img3 = document.getElementById('newTourImgBase64_3').value;
+                
+                if(img1) images.push(img1);
+                if(img2) images.push(img2);
+                if(img3) images.push(img3);
 
                 const data = {
                     name,
@@ -827,7 +875,8 @@
                     desc: document.getElementById('newTourDesc').value,
                     startTime: document.getElementById('newTourStart').value,
                     endTime: document.getElementById('newTourEnd').value,
-                    img: imgBase64,
+                    img: images[0] || '', // Maintain legacy primary
+                    images: images, // New array support
                     route: getListValues('tour-route-container'),
                     includes: getListValues('tour-includes-container'),
                     notIncludes: getListValues('tour-not-includes-container')
@@ -1346,32 +1395,16 @@
             const data = window.getProposalData();
             if(!data.clientName) return Swal.fire('Falta Nombre', 'Ingrese nombre del cliente', 'warning');
             const nights = Math.ceil((new Date(data.departure) - new Date(data.arrival))/(1000*60*60*24));
-            const days = nights + 1; 
             
             // 1. Update Itinerary List (Simple with times)
             let toursHtml = '';
             if(data.tours.length > 0) {
                 toursHtml = '<div class="space-y-2">';
                 data.tours.forEach(t => {
-                    // Helper para formato 12h
-                    const formatTime = (time) => {
-                        if (!time) return '';
-                        let [h, m] = time.split(':');
-                        h = parseInt(h);
-                        const ampm = h >= 12 ? 'pm' : 'am';
-                        h = h % 12;
-                        h = h ? h : 12;
-                        return `${h.toString().padStart(2, '0')}:${m} ${ampm}`;
-                    };
-
+                    // Formatear horario de manera flexible
                     let timeString = '';
-                    // Se usan los valores copiados en la tabla de tours del cotizador, o los originales si no se editaron
-                    // La lógica de renderSelectedToursTable usa t.startTime y t.endTime que vienen del catálogo o edición
-                    const st = t.startTime ? formatTime(t.startTime) : '';
-                    const et = t.endTime ? formatTime(t.endTime) : '';
-
-                    if(st) timeString += `INICIO: ${st}`;
-                    if(et) timeString += (timeString ? ' - ' : '') + `RETORNO: ${et}`;
+                    if(t.startTime) timeString += t.startTime;
+                    if(t.endTime) timeString += (timeString ? ' - ' : '') + t.endTime;
 
                     toursHtml += `
                         <div class="flex items-start p-3 border-b border-gray-100">
@@ -1388,7 +1421,7 @@
                 toursHtml += '</div>';
             } else { toursHtml = '<p class="text-gray-400 italic text-xs p-4">Sin actividades extra.</p>'; }
 
-            // 2. Create Tour Details Section (New 4-Column Layout)
+            // 2. Create Tour Details Section (New 4-Column Layout with 3 Images)
             let tourDetailsHtml = '';
             if(data.tours.length > 0) {
                 const tourGridClass = 'grid-cols-1'; 
@@ -1409,17 +1442,33 @@
                        `;
                    };
                    
-                   const img = t.img || placeholderImg;
+                   // Logic for images: use array or fallback to legacy single img
+                   const imgs = (t.images && t.images.length > 0) ? t.images : (t.img ? [t.img] : [placeholderImg]);
+                   
+                   // Construir grid de imágenes
+                   let imagesHtml = '';
+                   if(imgs.length === 1) {
+                       imagesHtml = `<div class="h-40 rounded overflow-hidden shadow-sm relative border border-gray-100"><img src="${imgs[0]}" class="w-full h-full object-cover"></div>`;
+                   } else {
+                       // Grid para 2 o 3 imagenes
+                       imagesHtml = `<div class="grid grid-rows-2 gap-1 h-40">`;
+                       // First image takes top half
+                       imagesHtml += `<div class="row-span-1 rounded overflow-hidden shadow-sm relative border border-gray-100"><img src="${imgs[0]}" class="w-full h-full object-cover"></div>`;
+                       // Bottom half split for others
+                       imagesHtml += `<div class="row-span-1 grid grid-cols-${imgs.length-1} gap-1">`;
+                       for(let i=1; i<imgs.length; i++) {
+                           imagesHtml += `<div class="rounded overflow-hidden shadow-sm relative border border-gray-100"><img src="${imgs[i]}" class="w-full h-full object-cover"></div>`;
+                       }
+                       imagesHtml += `</div></div>`;
+                   }
 
                    tourDetailsHtml += `
                     <div class="border rounded-lg overflow-hidden flex flex-col shadow-sm bg-white avoid-break">
                         <div class="bg-gray-800 text-white p-2 text-center font-bold text-xs border-b border-gray-700">${t.name}</div>
                         <div class="p-4 grid grid-cols-4 gap-4">
-                            <!-- Columna 1: Imagen -->
+                            <!-- Columna 1: Imágenes (Hasta 3) -->
                             <div class="col-span-1">
-                                <div class="h-32 rounded overflow-hidden shadow-sm relative border border-gray-100">
-                                    <img src="${img}" class="w-full h-full object-cover">
-                                </div>
+                                ${imagesHtml}
                             </div>
                             <!-- Columna 2: Recorrido -->
                             <div class="col-span-1 border-r border-gray-100 pr-2">
