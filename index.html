@@ -18,7 +18,7 @@
         h1, h2, h3, h4 { font-family: 'Montserrat', sans-serif; }
         
         @media print {
-            /* Ocultar encabezados y pies de página automáticos (URL, fecha, etc.) */
+            /* Ocultar encabezados y pies de página automáticos */
             @page { margin: 0; size: auto; }
 
             .no-print { display: none !important; }
@@ -26,7 +26,7 @@
                 background-color: white; 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important; 
-                margin: 1cm !important; /* Restaurar margen de seguridad para el contenido */
+                margin: 1cm !important; 
             }
             .shadow-lg { box-shadow: none; border: 1px solid #ddd; }
             .page-break { page-break-before: always; }
@@ -47,7 +47,7 @@
                 box-shadow: none;
                 border: none;
             }
-            /* Forzar grid de 2 columnas en impresión para formato 2x2 */
+            /* Grillas de impresión */
             .print-grid-2 {
                 display: grid !important;
                 grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -178,10 +178,8 @@
                                 <div class="mb-3">
                                     <label class="text-xs font-bold text-gray-500 mb-1 block">Agregar Tour:</label>
                                     <div class="flex gap-2">
-                                        <!-- CAMBIO: Input con Datalist para búsqueda rápida -->
                                         <input type="text" id="catalogToursInput" list="dl-tours-global" class="form-input text-sm flex-grow" placeholder="Buscar o escribir tour" oninput="window.checkTourMatch(this)">
                                         <datalist id="dl-tours-global"></datalist>
-                                        
                                         <button type="button" onclick="window.addTourToSelection()" class="bg-teal-600 text-white px-3 rounded hover:bg-teal-700 font-bold text-sm whitespace-nowrap">
                                             <i class="fas fa-plus"></i> Agregar
                                         </button>
@@ -262,7 +260,7 @@
         <div id="view-catalogo" class="view-section hidden max-w-7xl mx-auto px-4 py-8">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">Catálogo de Proveedores</h2>
             
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 <!-- HOTELES -->
                 <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
@@ -453,6 +451,41 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- TRANSPORTES -->
+                <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-purple-700"><i class="fas fa-bus"></i> Transportes</h3>
+                        <button onclick="window.editCatalogItem('transport', null)" class="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded font-bold hover:bg-purple-200">+ Nuevo</button>
+                    </div>
+                    
+                    <div id="transport-form-container" class="mb-4 bg-gray-50 p-4 rounded border hidden border-l-4 border-purple-500">
+                        <h4 class="text-sm font-bold mb-2 text-purple-800" id="transport-form-title">Nuevo Transporte</h4>
+                        <input type="hidden" id="editTransportId">
+                        
+                        <div class="mb-2">
+                            <label class="text-[9px] text-gray-500 font-bold block">Nombre / Ruta</label>
+                            <input type="text" id="newTransportName" placeholder="Ej. Tarapoto - Sauce (Auto)" class="form-input mb-2 text-sm">
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="text-[9px] text-gray-500 font-bold block">Costo Neto (S/.)</label>
+                            <input type="number" id="newTransportPrice" class="form-input text-xs py-1" placeholder="0.00">
+                        </div>
+
+                        <div class="flex gap-2 mt-4 pt-2 border-t">
+                            <button onclick="window.saveCatalogItem('transport')" class="w-full bg-purple-600 text-white text-xs py-2 rounded font-bold hover:bg-purple-700">Guardar</button>
+                            <button onclick="window.toggleForm('transport-form-container')" class="w-1/3 bg-gray-300 text-gray-700 text-xs py-2 rounded font-bold hover:bg-gray-400">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-y-auto max-h-96 border rounded">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-100 text-xs uppercase"><tr><th class="p-2">Transporte</th><th class="p-2">Neto</th><th class="p-2 text-right">Acciones</th></tr></thead>
+                            <tbody id="catalog-transports-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -510,6 +543,7 @@
         // GLOBAL DATA STATE
         window.catalogHotels = [];
         window.catalogTours = [];
+        window.catalogTransports = [];
         window.savedProposals = [];
         window.currentSelectedTours = [];
 
@@ -526,6 +560,7 @@
             // FIX: Use PUBLIC collection path for shared access across devices
             const hotelsRef = collection(db, 'artifacts', appId, 'public', 'data', 'hotels');
             const toursRef = collection(db, 'artifacts', appId, 'public', 'data', 'tours');
+            const transportsRef = collection(db, 'artifacts', appId, 'public', 'data', 'transports');
             const propsRef = collection(db, 'artifacts', appId, 'public', 'data', 'proposals');
 
             let loadedCount = 0;
@@ -557,6 +592,11 @@
                 checkLoaded();
             });
 
+            onSnapshot(transportsRef, (snapshot) => {
+                window.catalogTransports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                window.renderCatalogTables();
+            });
+
             onSnapshot(propsRef, (snapshot) => {
                 window.savedProposals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 window.renderHistoryTable();
@@ -575,6 +615,10 @@
         window.fsAddTour = async (data) => await addDoc(publicPath('tours'), data);
         window.fsUpdateTour = async (id, data) => await updateDoc(publicDoc('tours', id), data);
         window.fsDeleteTour = async (id) => await deleteDoc(publicDoc('tours', id));
+
+        window.fsAddTransport = async (data) => await addDoc(publicPath('transports'), data);
+        window.fsUpdateTransport = async (id, data) => await updateDoc(publicDoc('transports', id), data);
+        window.fsDeleteTransport = async (id) => await deleteDoc(publicDoc('transports', id));
 
         window.fsSaveProposal = async (data) => {
             if(!userId) { Swal.fire('Error', 'No autenticado', 'error'); return; }
@@ -714,9 +758,11 @@
 
         window.editCatalogItem = (type, id) => {
             const isEdit = id !== null;
-            document.getElementById(type === 'hotel' ? 'hotel-form-container' : 'tour-form-container').classList.remove('hidden');
             
             if(type === 'hotel') {
+                document.getElementById('hotel-form-container').classList.remove('hidden');
+                document.getElementById('tour-form-container').classList.add('hidden');
+                document.getElementById('transport-form-container').classList.add('hidden');
                 document.getElementById('editHotelId').value = isEdit ? id : '';
                 document.getElementById('hotel-rooms-body').innerHTML = ''; 
                 document.getElementById('newHotelImgFile').value = '';
@@ -758,8 +804,11 @@
                     document.getElementById('newHotelAmenities').value = '';
                     window.addRoomInputRow();
                 }
-            } else {
+            } else if (type === 'tour') {
                 // TOUR LOGIC UPDATED
+                document.getElementById('tour-form-container').classList.remove('hidden');
+                document.getElementById('hotel-form-container').classList.add('hidden');
+                document.getElementById('transport-form-container').classList.add('hidden');
                 document.getElementById('editTourId').value = isEdit ? id : '';
                 
                 // Limpiar listas dinámicas y campos
@@ -813,6 +862,21 @@
                     document.getElementById('newTourDesc').value = '';
                     document.getElementById('newTourStart').value = '';
                     document.getElementById('newTourEnd').value = '';
+                }
+            } else if (type === 'transport') {
+                document.getElementById('transport-form-container').classList.remove('hidden');
+                document.getElementById('hotel-form-container').classList.add('hidden');
+                document.getElementById('tour-form-container').classList.add('hidden');
+
+                document.getElementById('editTransportId').value = isEdit ? id : '';
+                
+                if(isEdit) {
+                    const tr = window.catalogTransports.find(x => x.id == id);
+                    document.getElementById('newTransportName').value = tr.name;
+                    document.getElementById('newTransportPrice').value = tr.price_net;
+                } else {
+                    document.getElementById('newTransportName').value = '';
+                    document.getElementById('newTransportPrice').value = '';
                 }
             }
         }
@@ -888,7 +952,9 @@
 
         window.deleteCatalogItem = (type, id) => {
             if(!confirm('¿Eliminar?')) return;
-            if(type === 'hotel') window.fsDeleteHotel(id); else window.fsDeleteTour(id);
+            if(type === 'hotel') window.fsDeleteHotel(id); 
+            else if(type === 'tour') window.fsDeleteTour(id);
+            else if(type === 'transport') window.fsDeleteTransport(id);
         }
 
         // --- COTIZACIÓN LOGIC ---
@@ -907,9 +973,8 @@
 
         window.checkTourMatch = (input) => {
             const val = input.value;
-            const tour = window.catalogTours.find(t => t.name === val);
-            if(tour) input.dataset.selectedId = tour.id;
-            else delete input.dataset.selectedId;
+            const item = window.catalogTours.find(t => t.name === val) || window.catalogTransports.find(t => t.name === val);
+            if(item) input.dataset.selectedId = item.id; else delete input.dataset.selectedId;
         }
 
         window.addTourToSelection = () => {
@@ -918,11 +983,14 @@
             if(!val) return;
             
             // Try to find by ID (set by checkMatch) or by Name match
-            let tour = null;
+            let item = null;
             if(input.dataset.selectedId) {
-                tour = window.catalogTours.find(t => t.id == input.dataset.selectedId);
+                // Check both lists
+                item = window.catalogTours.find(t => t.id == input.dataset.selectedId);
+                if(!item) item = window.catalogTransports.find(t => t.id == input.dataset.selectedId);
             } else {
-                tour = window.catalogTours.find(t => t.name.toLowerCase() === val.toLowerCase());
+                item = window.catalogTours.find(t => t.name.toLowerCase() === val.toLowerCase());
+                if(!item) item = window.catalogTransports.find(t => t.name.toLowerCase() === val.toLowerCase());
             }
 
             // Default for custom
@@ -930,17 +998,19 @@
                 id: Date.now(),
                 name: val,
                 price_net: 0,
-                desc: 'Tour personalizado',
+                desc: 'Item personalizado',
                 startTime: '',
-                endTime: ''
+                endTime: '',
+                type: 'tour'
             };
 
-            if(tour) {
+            if(item) {
                 // Copy properties to avoid reference issues
                 tourData = { 
-                    ...tour,
-                    startTime: tour.startTime || '',
-                    endTime: tour.endTime || ''
+                    ...item,
+                    type: item.startTime !== undefined ? 'tour' : 'transport',
+                    startTime: item.startTime || '',
+                    endTime: item.endTime || ''
                 };
             }
             
@@ -968,7 +1038,6 @@
             const diffDays = Math.ceil(Math.abs(departure - arrival) / (1000 * 60 * 60 * 24)) + 1; 
             
             let dayOptions = '';
-            // El bucle ahora incluye el último día (<=)
             for(let i=1; i <= diffDays; i++) dayOptions += `<option value="Día ${i}">Día ${i}</option>`;
             if(!dayOptions) dayOptions = `<option value="Día 1">Día 1</option>`;
 
@@ -979,11 +1048,13 @@
                 
                 let currentDayOptions = dayOptions;
                 if(!dayOptions.includes(`value="${t.dayLabel}"`)) currentDayOptions += `<option value="${t.dayLabel}" selected>${t.dayLabel}</option>`;
+                
+                const icon = t.type === 'transport' ? '<i class="fas fa-bus text-purple-500 mr-1"></i>' : '<i class="fas fa-flag text-teal-500 mr-1"></i>';
 
                 tbody.innerHTML += `
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-2"><select class="w-full text-xs border rounded p-1 bg-white" onchange="window.currentSelectedTours[${i}].dayLabel=this.value; window.renderSelectedToursTable()">${currentDayOptions.replace(`value="${t.dayLabel}"`, `value="${t.dayLabel}" selected`)}</select></td>
-                        <td class="p-2 text-xs font-semibold text-gray-700">${t.name}</td>
+                        <td class="p-2 text-xs font-semibold text-gray-700">${icon}${t.name}</td>
                         <td class="p-2 text-center"><input type="number" value="${t.price_net}" class="w-14 border text-center text-xs p-1" onchange="window.currentSelectedTours[${i}].price_net=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
                         <td class="p-2 text-center"><input type="number" value="${t.customMargin}" class="w-12 border text-center text-xs p-1" placeholder="S/." onchange="window.currentSelectedTours[${i}].customMargin=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
                         <td class="p-2 font-bold text-teal-700 text-xs text-center">S/.${sell.toFixed(2)}</td>
@@ -1396,42 +1467,30 @@
             if(data.tours.length > 0) {
                 toursHtml = '<div class="space-y-3">';
                 data.tours.forEach(t => {
-                    // Helper para formato 12h
-                    const formatTime = (time) => {
-                        if (!time) return '';
-                        let [h, m] = time.split(':');
-                        h = parseInt(h);
-                        const ampm = h >= 12 ? 'pm' : 'am';
-                        h = h % 12;
-                        h = h ? h : 12;
-                        return `${h.toString().padStart(2, '0')}:${m} ${ampm}`;
-                    };
-
+                    // Formatear horario de manera flexible
                     let timeString = '';
-                    const st = t.startTime ? formatTime(t.startTime) : '';
-                    const et = t.endTime ? formatTime(t.endTime) : '';
-
-                    if(st) timeString += `INICIO: ${st}`;
-                    if(et) timeString += (st ? ' - ' : '') + `RETORNO: ${et}`;
+                    if(t.startTime) timeString += t.startTime;
+                    if(t.endTime) timeString += (timeString ? ' - ' : '') + t.endTime;
 
                     toursHtml += `
-                        <div class="flex items-start p-3 border-b border-gray-100 last:border-0">
+                        <div class="flex items-start p-3 border-b border-gray-100">
                             <div class="w-24 flex-shrink-0 pt-1">
-                                <span class="bg-teal-50 text-teal-800 text-[10px] font-bold px-2 py-1 rounded uppercase block text-center border border-teal-100 shadow-sm">${t.dayLabel}</span>
+                                <span class="bg-teal-50 text-teal-800 text-[10px] font-bold px-2 py-1 rounded uppercase block text-center">${t.dayLabel}</span>
                             </div>
-                            <div class="ml-4">
+                            <div class="ml-3">
                                 <div class="font-bold text-sm text-gray-800">${t.name}</div>
-                                ${timeString ? `<div class="text-[10px] font-bold text-teal-700 mt-1 flex items-center bg-teal-50 inline-block px-2 py-0.5 rounded border border-teal-100"><i class="far fa-clock mr-1.5"></i>${timeString}</div>` : ''}
-                                <div class="text-xs text-gray-500 mt-1.5 leading-relaxed">${t.desc}</div>
+                                ${timeString ? `<div class="text-xs font-bold text-teal-600 mt-0.5 flex items-center"><i class="far fa-clock mr-1"></i>${timeString}</div>` : ''}
+                                <div class="text-xs text-gray-500 mt-1">${t.desc}</div>
                             </div>
                         </div>`;
                 });
                 toursHtml += '</div>';
             } else { toursHtml = '<p class="text-gray-400 italic text-xs p-4">Sin actividades extra.</p>'; }
 
-            // 2. Create Tour Details Section (New 4-Column Layout with 3 Images)
+            // 2. Create Tour Details Section (New 4-Column Layout)
             let tourDetailsHtml = '';
             if(data.tours.length > 0) {
+                // MODIFICADO: Grid de 1 columna para vista "rectangular extendida"
                 const tourGridClass = 'grid-cols-1'; 
                 
                 tourDetailsHtml = `<div class="grid ${tourGridClass} gap-6">`;
@@ -1450,36 +1509,17 @@
                        `;
                    };
                    
-                   // Logic for images: use array or fallback to legacy single img
-                   const imgs = (t.images && t.images.length > 0) ? t.images : (t.img ? [t.img] : [placeholderImg]);
-                   
-                   // Construir grid de imágenes
-                   let imagesHtml = '';
-                   if(imgs.length === 1) {
-                       imagesHtml = `<div class="h-40 rounded-lg overflow-hidden shadow-sm relative border border-gray-200"><img src="${imgs[0]}" class="w-full h-full object-cover"></div>`;
-                   } else if (imgs.length === 2) {
-                       imagesHtml = `<div class="grid grid-rows-2 gap-2 h-40">
-                            <div class="rounded-lg overflow-hidden shadow-sm border border-gray-200"><img src="${imgs[0]}" class="w-full h-full object-cover"></div>
-                            <div class="rounded-lg overflow-hidden shadow-sm border border-gray-200"><img src="${imgs[1]}" class="w-full h-full object-cover"></div>
-                       </div>`;
-                   } else {
-                       // Grid para 3 imagenes (1 Grande, 2 Pequeñas abajo)
-                       imagesHtml = `<div class="grid grid-rows-2 gap-2 h-40">
-                           <div class="row-span-1 rounded-lg overflow-hidden shadow-sm relative border border-gray-200"><img src="${imgs[0]}" class="w-full h-full object-cover"></div>
-                           <div class="row-span-1 grid grid-cols-2 gap-2">
-                               <div class="rounded-lg overflow-hidden shadow-sm relative border border-gray-200"><img src="${imgs[1]}" class="w-full h-full object-cover"></div>
-                               <div class="rounded-lg overflow-hidden shadow-sm relative border border-gray-200"><img src="${imgs[2]}" class="w-full h-full object-cover"></div>
-                           </div>
-                       </div>`;
-                   }
+                   const img = t.img || placeholderImg;
 
                    tourDetailsHtml += `
                     <div class="border rounded-lg overflow-hidden flex flex-col shadow-sm bg-white avoid-break">
                         <div class="bg-gray-800 text-white p-2 text-center font-bold text-xs border-b border-gray-700">${t.name}</div>
                         <div class="p-4 grid grid-cols-4 gap-4">
-                            <!-- Columna 1: Imágenes (Hasta 3) -->
+                            <!-- Columna 1: Imagen -->
                             <div class="col-span-1">
-                                ${imagesHtml}
+                                <div class="h-32 rounded overflow-hidden shadow-sm relative border border-gray-100">
+                                    <img src="${img}" class="w-full h-full object-cover">
+                                </div>
                             </div>
                             <!-- Columna 2: Recorrido -->
                             <div class="col-span-1 border-r border-gray-100 pr-2">
@@ -1508,10 +1548,12 @@
             const docHtml = `
                 <div class="font-sans text-gray-800 bg-white">
                      <div class="bg-gray-900 text-white p-6 avoid-break">
-                        <!-- Título y Duración -->
+                        <!-- Título y Datos Principales (Personas/Duración) -->
                         <div class="flex justify-between items-end border-b border-gray-700 pb-3 mb-6">
                             <h1 class="text-3xl font-bold text-teal-400 tracking-tight">PROPUESTA DE VIAJE</h1>
-                            <span class="text-lg font-bold text-teal-500 uppercase tracking-widest">${days} DÍAS Y ${nights} NOCHES</span>
+                            <div class="text-right">
+                                <span class="text-xl font-bold text-teal-400 uppercase tracking-widest">${days} DÍAS Y ${nights} NOCHES</span>
+                            </div>
                         </div>
                         
                         <!-- HEADER REESTRUCTURADO 50% - 50% -->
