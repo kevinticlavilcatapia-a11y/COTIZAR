@@ -192,7 +192,7 @@
                                             <tr>
                                                 <th class="p-2 w-20">Día</th>
                                                 <th class="p-2">Tour</th>
-                                                <th class="p-2 w-24 text-center">Horario</th> <!-- Nueva Columna -->
+                                                <th class="p-2 w-24 text-center">Horario</th>
                                                 <th class="p-2 w-16 text-center">Neto</th>
                                                 <th class="p-2 w-16 text-center">MG (S/.)</th>
                                                 <th class="p-2 w-16 text-center">Venta</th>
@@ -852,11 +852,18 @@
                 id: Date.now(),
                 name: val,
                 price_net: 0,
-                desc: 'Tour personalizado'
+                desc: 'Tour personalizado',
+                startTime: '',
+                endTime: ''
             };
 
             if(tour) {
-                tourData = { ...tour };
+                // Copy properties to avoid reference issues
+                tourData = { 
+                    ...tour,
+                    startTime: tour.startTime || '',
+                    endTime: tour.endTime || ''
+                };
             }
             
             window.currentSelectedTours.push({
