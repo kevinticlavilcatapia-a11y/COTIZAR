@@ -17,43 +17,75 @@
         body { font-family: 'Open Sans', sans-serif; }
         h1, h2, h3, h4 { font-family: 'Montserrat', sans-serif; }
         
+        /* ESTILOS DE IMPRESIÓN MEJORADOS */
         @media print {
-            /* Ocultar encabezados y pies de página automáticos (URL, fecha, etc.) */
-            @page { margin: 0; size: auto; }
+            @page { 
+                margin: 1cm; 
+                size: auto; 
+            }
 
-            .no-print { display: none !important; }
             body { 
                 background-color: white; 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important; 
-                margin: 1cm !important; /* Restaurar margen de seguridad para el contenido */
+                margin: 0 !important;
+                padding: 0 !important;
             }
-            .shadow-lg { box-shadow: none; border: 1px solid #ddd; }
-            .page-break { page-break-before: always; }
-            #admin-panel { display: none; }
-            #view-preview { display: block !important; }
-            #main-nav { display: none; }
+
+            .no-print { display: none !important; }
+
+            /* Contenedor principal de impresión */
             #client-view-container { 
                 position: static; 
                 width: 100%; 
                 z-index: 9999; 
                 background: white;
             }
+
             #client-view-content {
-                zoom: 0.95; 
+                zoom: 1; /* Reset zoom para control preciso */
                 width: 100%;
                 margin: 0;
                 padding: 0;
                 box-shadow: none;
                 border: none;
             }
-            /* Forzar grid de 2 columnas en impresión para formato 2x2 */
+
+            /* Regla de ORO: Evitar cortes dentro de tarjetas */
+            .print-break-avoid {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                margin-bottom: 1rem; /* Espacio extra por si salta de página */
+            }
+
+            /* Grilla forzada para impresión */
             .print-grid-2 {
                 display: grid !important;
-                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                grid-template-columns: repeat(2, 1fr) !important;
                 gap: 1.5rem !important;
+                align-items: start;
             }
-            .print-hide-overflow { overflow: visible !important; }
+
+            /* Ajustes visuales para papel */
+            .shadow-sm, .shadow-lg { 
+                box-shadow: none !important; 
+                border: 1px solid #e5e7eb !important; /* Borde gris suave en vez de sombra */
+            }
+            
+            /* Fondos oscuros */
+            .bg-gray-900 {
+                background-color: #1a202c !important;
+                color: white !important;
+            }
+            
+            /* Tabla Resumen */
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            th, td {
+                border: 1px solid #e5e7eb !important;
+            }
         }
         
         .form-input { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.9rem; transition: border-color 0.2s; }
@@ -123,7 +155,7 @@
                     </div>
                 </div>
                 <!-- Contenido A4 simulado -->
-                <div id="client-view-content" class="pb-12 shadow-2xl max-w-6xl mx-auto bg-white min-h-screen print-hide-overflow">
+                <div id="client-view-content" class="pb-12 shadow-2xl max-w-5xl mx-auto bg-white min-h-screen">
                     <!-- HTML Inyectado -->
                 </div>
             </div>
@@ -573,6 +605,7 @@
                 document.getElementById('hotel-rooms-body').innerHTML = ''; 
                 document.getElementById('newHotelImgFile').value = '';
                 
+                // Clear checkboxes
                 document.querySelectorAll('.amenity-checkbox').forEach(cb => cb.checked = false);
 
                 if(isEdit) {
@@ -584,6 +617,7 @@
                     preview.src = h.img || '';
                     if(h.img) preview.classList.remove('hidden'); else preview.classList.add('hidden');
                     
+                    // Set checkboxes from array
                     if (h.amenities) {
                         h.amenities.forEach(am => {
                             let cb = document.querySelector(`.amenity-checkbox[value="${am}"]`);
@@ -637,6 +671,7 @@
                     if(rName) rooms.push({ name: rName, capacity: parseInt(rCap)||1, price: parseFloat(rPrice)||0, img: rImg });
                 });
 
+                // Get amenities from checkboxes
                 const amenities = Array.from(document.querySelectorAll('.amenity-checkbox:checked')).map(cb => cb.value);
 
                 const imgBase64 = document.getElementById('newHotelImgBase64').value || placeholderImg;
@@ -696,6 +731,7 @@
             const val = input.value;
             if(!val) return;
             
+            // Try to find by ID (set by checkMatch) or by Name match
             let tour = null;
             if(input.dataset.selectedId) {
                 tour = window.catalogTours.find(t => t.id == input.dataset.selectedId);
@@ -703,6 +739,7 @@
                 tour = window.catalogTours.find(t => t.name.toLowerCase() === val.toLowerCase());
             }
 
+            // Default for custom
             let tourData = {
                 id: Date.now(),
                 name: val,
@@ -729,8 +766,8 @@
             const tbody = document.getElementById('selected-tours-body');
             const msg = document.getElementById('no-tours-msg');
             tbody.innerHTML = '';
-            if(window.currentSelectedTours.length===0) { msg.classList.remove('hidden'); document.getElementById('tours-total-display').innerText='S/.0'; return; }
-            msg.classList.add('hidden');
+            if(window.currentSelectedTours.length===0) { msg.classList.remove('hidden'); }
+            else { msg.classList.add('hidden'); }
             
             const arrival = new Date(document.getElementById('arrivalDate').value);
             const departure = new Date(document.getElementById('departureDate').value);
@@ -754,13 +791,13 @@
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-2"><select class="w-full text-xs border rounded p-1 bg-white" onchange="window.currentSelectedTours[${i}].dayLabel=this.value; window.renderSelectedToursTable()">${currentDayOptions.replace(`value="${t.dayLabel}"`, `value="${t.dayLabel}" selected`)}</select></td>
                         <td class="p-2 text-xs font-semibold text-gray-700">${t.name}</td>
-                        <td class="p-2 text-center"><input type="number" value="${t.price_net}" class="w-16 border text-center text-xs p-1" onchange="window.currentSelectedTours[${i}].price_net=parseFloat(this.value); window.renderSelectedToursTable()"></td>
-                        <td class="p-2 text-center"><input type="number" value="${t.customMargin}" class="w-14 border text-center text-xs p-1" placeholder="S/." onchange="window.currentSelectedTours[${i}].customMargin=parseFloat(this.value); window.renderSelectedToursTable()"></td>
+                        <td class="p-2 text-center"><input type="number" value="${t.price_net}" class="w-16 border text-center text-xs p-1" onchange="window.currentSelectedTours[${i}].price_net=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
+                        <td class="p-2 text-center"><input type="number" value="${t.customMargin}" class="w-14 border text-center text-xs p-1" placeholder="S/." onchange="window.currentSelectedTours[${i}].customMargin=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
                         <td class="p-2 font-bold text-teal-700 text-xs text-center">S/.${sell.toFixed(2)}</td>
                         <td class="p-2 text-center"><button onclick="window.currentSelectedTours.splice(${i},1);window.renderSelectedToursTable()" class="text-red-400"><i class="fas fa-times"></i></button></td>
                     </tr>`;
             });
-            document.getElementById('tours-total-display').innerText = `S/.${total.toFixed(2)}`;
+            window.updateFinancialDashboard();
         }
 
         window.populateLocationSelect = (select) => {
@@ -771,7 +808,7 @@
             const wrapper = document.getElementById('hotel-options-wrapper');
             if(wrapper.children.length>=4) return Swal.fire('Límite 4 opciones', '', 'warning');
             const letter = String.fromCharCode(65 + wrapper.children.length);
-            const cardId = Date.now() + Math.random().toString(36).substr(2, 5); 
+            const cardId = Date.now() + Math.random().toString(36).substr(2, 5); // ID único para datalist local si se usara
             
             const div = document.createElement('div');
             div.className = "bg-gray-50 p-4 rounded-lg border border-gray-200 relative shadow-sm option-card group";
@@ -790,6 +827,7 @@
                     
                     <input type="text" class="form-input text-xs py-1 h-8 mb-2 add-hotel-input" list="dl-hotels-global" placeholder="Buscar o Escribir Hotel" oninput="window.checkHotelMatch(this)">
                     
+                    <!-- Datalist para habitaciones, dinámico por JS -->
                     <input type="text" class="form-input text-xs py-1 h-8 mb-2 add-room-input" list="dl-rooms-${cardId}" placeholder="Tipo Habitación" oninput="window.checkRoomMatch(this)">
                     <datalist id="dl-rooms-${cardId}"></datalist>
                     
@@ -823,13 +861,13 @@
                 </div>
             `;
             wrapper.appendChild(div);
-            window.updateFinancialDashboard();
         }
 
         window.filterHotelsByLocation = (locInput) => {
             const val = locInput.value;
             const dl = document.getElementById('dl-hotels-global');
             if(!val) {
+                // Reset to all
                 dl.innerHTML = window.catalogHotels.map(h => `<option value="${h.name}">${h.zone}</option>`).join('');
                 return;
             }
@@ -841,17 +879,19 @@
             const val = input.value;
             const card = input.closest('.option-card');
             const roomDatalist = card.querySelector('datalist');
-            roomDatalist.innerHTML = ''; 
+            roomDatalist.innerHTML = ''; // Clear prev options
             
+            // Find matched hotel by name
             const hotel = window.catalogHotels.find(h => h.name === val);
             
             if (hotel) {
                 input.dataset.selectedId = hotel.id;
+                // Populate rooms
                 if (hotel.rooms) {
                     roomDatalist.innerHTML = hotel.rooms.map(r => `<option value="${r.name}">Cap: ${r.capacity} | S/.${r.price}</option>`).join('');
                 }
             } else {
-                delete input.dataset.selectedId; 
+                delete input.dataset.selectedId; // It's a custom hotel
             }
         }
 
@@ -893,7 +933,7 @@
             const nights = wrapper.querySelector('.add-nights').value;
             const price = wrapper.querySelector('.add-net-price').value;
             const margin = wrapper.querySelector('.add-margin').value;
-            const hotelId = wrapper.querySelector('.add-hotel-input').dataset.selectedId || ''; 
+            const hotelId = wrapper.querySelector('.add-hotel-input').dataset.selectedId || ''; // Empty if custom
 
             if(!hotelName || !roomName) return Swal.fire('Faltan datos', 'Ingrese hotel y habitación', 'warning');
 
@@ -928,7 +968,7 @@
             container.appendChild(div);
             window.updateOptionTotals(btn);
             
-            // Clear specific fields
+            // Clear specific fields but maybe leave hotel/dates for convenience? Let's clear room mostly.
             wrapper.querySelector('.add-room-input').value = '';
             wrapper.querySelector('.add-net-price').value = '0';
         }
@@ -936,7 +976,7 @@
         window.editHotelSegment = (btn) => {
             const row = btn.closest('.segment-row');
             const card = btn.closest('.option-card');
-            const wrapper = card.querySelector('.bg-white.p-3'); 
+            const wrapper = card.querySelector('.bg-white.p-3'); // The add form
 
             // Extract data
             const hName = row.querySelector('.seg-hotel-name').value;
@@ -952,6 +992,7 @@
             hInput.value = hName;
             if(hId) hInput.dataset.selectedId = hId; else delete hInput.dataset.selectedId;
             
+            // Trigger match to populate room datalist
             window.checkHotelMatch(hInput); 
 
             wrapper.querySelector('.add-room-input').value = rName;
@@ -963,9 +1004,9 @@
             // Update preview numbers
             window.calculateSegmentPreview(hInput);
 
-            // Remove the row
+            // Remove the row (it's "moved" to edit area)
             row.remove();
-            window.updateOptionTotals(wrapper); 
+            window.updateOptionTotals(wrapper); // Recalc totals after removal
         }
 
         window.updateOptionTotals = (elem) => {
