@@ -352,12 +352,26 @@
                             <input type="text" id="newTourDesc" placeholder="Descripción breve (marketing)" class="form-input mb-2 text-sm">
                         </div>
                         
-                        <!-- IMAGEN VERTICAL DEL TOUR -->
-                        <div class="border rounded p-2 bg-white mb-2">
-                            <label class="text-[9px] text-gray-500 block mb-1">Imagen Vertical del Tour:</label>
-                            <input type="file" id="newTourImgFile" accept="image/*" class="w-full text-xs" onchange="window.handleTourImageUpload(this, 'tourImgPreview')">
-                            <input type="hidden" id="newTourImgBase64">
-                            <img id="tourImgPreview" class="h-32 w-24 object-cover mt-2 hidden rounded mx-auto border">
+                        <!-- IMAGEN VERTICAL DEL TOUR (MEJORADO) -->
+                        <div class="mb-3">
+                            <label class="text-xs font-bold text-gray-700 block mb-1">Imagen Vertical (Portada)</label>
+                            <div class="relative border-2 border-dashed border-gray-300 bg-white rounded-lg p-4 text-center hover:bg-blue-50 transition group">
+                                <input type="file" id="newTourImgFile" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleTourImageUpload(this)">
+                                
+                                <div id="tourUploadPlaceholder" class="pointer-events-none">
+                                    <i class="fas fa-cloud-upload-alt text-gray-400 text-3xl mb-2"></i>
+                                    <p class="text-xs text-gray-500 font-semibold">Click o arrastra imagen aquí</p>
+                                    <p class="text-[9px] text-gray-400 mt-1">Formato Vertical recomendado (Max 1MB)</p>
+                                </div>
+
+                                <div id="tourPreviewContainer" class="hidden relative z-20">
+                                    <img id="tourImgPreview" class="h-48 w-32 object-cover rounded shadow-md mx-auto border border-gray-200">
+                                    <button type="button" onclick="window.clearTourImage(event)" class="absolute top-0 right-10 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:bg-red-600 transition" title="Eliminar imagen">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <input type="hidden" id="newTourImgBase64">
+                            </div>
                         </div>
 
                         <!-- Costos y Horarios -->
@@ -649,19 +663,32 @@
             }
         }
         
-        window.handleTourImageUpload = (input, previewId) => {
+        window.handleTourImageUpload = (input) => {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const base64 = e.target.result;
-                    if(base64.length > 800000) { alert("Imagen muy grande. Max 800kb."); input.value=""; return; }
+                    if(base64.length > 1000000) { alert("Imagen muy grande. Intente optimizarla (Max 1MB)."); input.value=""; return; }
+                    
                     document.getElementById('newTourImgBase64').value = base64;
-                    const preview = document.getElementById(previewId);
-                    preview.src = base64;
-                    preview.classList.remove('hidden');
+                    document.getElementById('tourImgPreview').src = base64;
+                    
+                    // Toggle UI
+                    document.getElementById('tourUploadPlaceholder').classList.add('hidden');
+                    document.getElementById('tourPreviewContainer').classList.remove('hidden');
                 };
                 reader.readAsDataURL(input.files[0]);
             }
+        }
+
+        window.clearTourImage = (e) => {
+            if(e) e.preventDefault(); // Evitar que se abra el selector de archivos al hacer click en borrar
+            document.getElementById('newTourImgFile').value = '';
+            document.getElementById('newTourImgBase64').value = '';
+            document.getElementById('tourImgPreview').src = '';
+            
+            document.getElementById('tourUploadPlaceholder').classList.remove('hidden');
+            document.getElementById('tourPreviewContainer').classList.add('hidden');
         }
 
         window.editCatalogItem = (type, id) => {
@@ -713,12 +740,12 @@
             } else {
                 // TOUR LOGIC UPDATED
                 document.getElementById('editTourId').value = isEdit ? id : '';
-                document.getElementById('newTourImgFile').value = '';
                 
-                // Limpiar listas dinámicas
+                // Limpiar listas dinámicas y campos
                 document.getElementById('tour-route-container').innerHTML = '';
                 document.getElementById('tour-includes-container').innerHTML = '';
                 document.getElementById('tour-not-includes-container').innerHTML = '';
+                window.clearTourImage(null); // Reset imagen UI
 
                 if(isEdit) {
                     const t = window.catalogTours.find(x => x.id == id);
@@ -727,11 +754,14 @@
                     document.getElementById('newTourDesc').value = t.desc;
                     document.getElementById('newTourStart').value = t.startTime || '';
                     document.getElementById('newTourEnd').value = t.endTime || '';
-                    document.getElementById('newTourImgBase64').value = t.img || '';
                     
-                    const preview = document.getElementById('tourImgPreview');
-                    preview.src = t.img || '';
-                    if(t.img) preview.classList.remove('hidden'); else preview.classList.add('hidden');
+                    // Cargar Imagen si existe
+                    if(t.img) {
+                        document.getElementById('newTourImgBase64').value = t.img;
+                        document.getElementById('tourImgPreview').src = t.img;
+                        document.getElementById('tourUploadPlaceholder').classList.add('hidden');
+                        document.getElementById('tourPreviewContainer').classList.remove('hidden');
+                    }
 
                     // Cargar listas
                     if(t.route) t.route.forEach(x => window.addDynamicItem('tour-route-container', null, x));
@@ -743,8 +773,6 @@
                     document.getElementById('newTourDesc').value = '';
                     document.getElementById('newTourStart').value = '';
                     document.getElementById('newTourEnd').value = '';
-                    document.getElementById('newTourImgBase64').value = '';
-                    document.getElementById('tourImgPreview').classList.add('hidden');
                 }
             }
         }
@@ -907,8 +935,14 @@
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-2"><select class="w-full text-xs border rounded p-1 bg-white" onchange="window.currentSelectedTours[${i}].dayLabel=this.value; window.renderSelectedToursTable()">${currentDayOptions.replace(`value="${t.dayLabel}"`, `value="${t.dayLabel}" selected`)}</select></td>
                         <td class="p-2 text-xs font-semibold text-gray-700">${t.name}</td>
-                        <td class="p-2 text-center"><input type="number" value="${t.price_net}" class="w-16 border text-center text-xs p-1" onchange="window.currentSelectedTours[${i}].price_net=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
-                        <td class="p-2 text-center"><input type="number" value="${t.customMargin}" class="w-14 border text-center text-xs p-1" placeholder="S/." onchange="window.currentSelectedTours[${i}].customMargin=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
+                        <td class="p-2 text-center">
+                            <div class="flex gap-1 justify-center">
+                                <input type="time" value="${t.startTime||''}" class="w-16 border text-[10px] p-0.5 rounded text-gray-600" onchange="window.currentSelectedTours[${i}].startTime=this.value">
+                                <input type="time" value="${t.endTime||''}" class="w-16 border text-[10px] p-0.5 rounded text-gray-600" onchange="window.currentSelectedTours[${i}].endTime=this.value">
+                            </div>
+                        </td>
+                        <td class="p-2 text-center"><input type="number" value="${t.price_net}" class="w-14 border text-center text-xs p-1" onchange="window.currentSelectedTours[${i}].price_net=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
+                        <td class="p-2 text-center"><input type="number" value="${t.customMargin}" class="w-12 border text-center text-xs p-1" placeholder="S/." onchange="window.currentSelectedTours[${i}].customMargin=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
                         <td class="p-2 font-bold text-teal-700 text-xs text-center">S/.${sell.toFixed(2)}</td>
                         <td class="p-2 text-center"><button onclick="window.currentSelectedTours.splice(${i},1);window.renderSelectedToursTable()" class="text-red-400"><i class="fas fa-times"></i></button></td>
                     </tr>`;
@@ -1319,9 +1353,25 @@
             if(data.tours.length > 0) {
                 toursHtml = '<div class="space-y-2">';
                 data.tours.forEach(t => {
+                    // Helper para formato 12h
+                    const formatTime = (time) => {
+                        if (!time) return '';
+                        let [h, m] = time.split(':');
+                        h = parseInt(h);
+                        const ampm = h >= 12 ? 'pm' : 'am';
+                        h = h % 12;
+                        h = h ? h : 12;
+                        return `${h.toString().padStart(2, '0')}:${m} ${ampm}`;
+                    };
+
                     let timeString = '';
-                    if(t.startTime) timeString += t.startTime;
-                    if(t.endTime) timeString += (timeString ? ' - ' : '') + t.endTime;
+                    // Se usan los valores copiados en la tabla de tours del cotizador, o los originales si no se editaron
+                    // La lógica de renderSelectedToursTable usa t.startTime y t.endTime que vienen del catálogo o edición
+                    const st = t.startTime ? formatTime(t.startTime) : '';
+                    const et = t.endTime ? formatTime(t.endTime) : '';
+
+                    if(st) timeString += `INICIO: ${st}`;
+                    if(et) timeString += (timeString ? ' - ' : '') + `RETORNO: ${et}`;
 
                     toursHtml += `
                         <div class="flex items-start p-3 border-b border-gray-100">
@@ -1338,14 +1388,17 @@
                 toursHtml += '</div>';
             } else { toursHtml = '<p class="text-gray-400 italic text-xs p-4">Sin actividades extra.</p>'; }
 
-            // 2. Create Tour Details Section
+            // 2. Create Tour Details Section (New 4-Column Layout)
             let tourDetailsHtml = '';
             if(data.tours.length > 0) {
                 const tourGridClass = 'grid-cols-1'; 
+                
                 tourDetailsHtml = `<div class="grid ${tourGridClass} gap-6">`;
+                
                 data.tours.forEach(t => {
+                   // Helper for lists
                    const renderList = (items, icon, title, color) => {
-                       if(!items || items.length === 0) return `<div class="text-[10px] text-gray-300 italic p-2">Sin datos</div>`;
+                       if(!items || items.length === 0) return `<div class="text-[10px] text-gray-300 italic p-2">Sin datos de ${title.toLowerCase()}</div>`;
                        return `
                         <div class="h-full">
                             <p class="text-[10px] font-bold text-${color}-700 uppercase mb-2 flex items-center border-b border-${color}-100 pb-1"><i class="${icon} mr-1"></i> ${title}</p>
@@ -1355,15 +1408,31 @@
                         </div>
                        `;
                    };
+                   
                    const img = t.img || placeholderImg;
+
                    tourDetailsHtml += `
                     <div class="border rounded-lg overflow-hidden flex flex-col shadow-sm bg-white avoid-break">
                         <div class="bg-gray-800 text-white p-2 text-center font-bold text-xs border-b border-gray-700">${t.name}</div>
                         <div class="p-4 grid grid-cols-4 gap-4">
-                            <div class="col-span-1"><div class="h-32 rounded overflow-hidden shadow-sm relative border border-gray-100"><img src="${img}" class="w-full h-full object-cover"></div></div>
-                            <div class="col-span-1 border-r border-gray-100 pr-2">${renderList(t.route, 'fas fa-map-signs', 'Recorrido', 'blue')}</div>
-                            <div class="col-span-1 border-r border-gray-100 pr-2">${renderList(t.includes, 'fas fa-check-circle', 'Incluye', 'green')}</div>
-                            <div class="col-span-1">${renderList(t.notIncludes, 'fas fa-times-circle', 'No Incluye', 'red')}</div>
+                            <!-- Columna 1: Imagen -->
+                            <div class="col-span-1">
+                                <div class="h-32 rounded overflow-hidden shadow-sm relative border border-gray-100">
+                                    <img src="${img}" class="w-full h-full object-cover">
+                                </div>
+                            </div>
+                            <!-- Columna 2: Recorrido -->
+                            <div class="col-span-1 border-r border-gray-100 pr-2">
+                                ${renderList(t.route, 'fas fa-map-signs', 'Recorrido', 'blue')}
+                            </div>
+                            <!-- Columna 3: Incluye -->
+                            <div class="col-span-1 border-r border-gray-100 pr-2">
+                                ${renderList(t.includes, 'fas fa-check-circle', 'Incluye', 'green')}
+                            </div>
+                            <!-- Columna 4: No Incluye -->
+                            <div class="col-span-1">
+                                ${renderList(t.notIncludes, 'fas fa-times-circle', 'No Incluye', 'red')}
+                            </div>
                         </div>
                     </div>
                    `; 
