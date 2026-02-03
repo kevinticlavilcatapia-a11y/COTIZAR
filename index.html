@@ -18,7 +18,7 @@
         h1, h2, h3, h4 { font-family: 'Montserrat', sans-serif; }
         
         @media print {
-            /* Ocultar encabezados y pies de página automáticos */
+            /* Ocultar encabezados y pies de página automáticos (URL, fecha, etc.) */
             @page { margin: 0; size: auto; }
 
             .no-print { display: none !important; }
@@ -26,7 +26,7 @@
                 background-color: white; 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important; 
-                margin: 1cm !important; 
+                margin: 1cm !important; /* Restaurar margen de seguridad para el contenido */
             }
             .shadow-lg { box-shadow: none; border: 1px solid #ddd; }
             .page-break { page-break-before: always; }
@@ -47,7 +47,7 @@
                 box-shadow: none;
                 border: none;
             }
-            /* Grillas de impresión */
+            /* Forzar grid de 2 columnas en impresión para formato 2x2 */
             .print-grid-2 {
                 display: grid !important;
                 grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -178,8 +178,10 @@
                                 <div class="mb-3">
                                     <label class="text-xs font-bold text-gray-500 mb-1 block">Agregar Tour:</label>
                                     <div class="flex gap-2">
+                                        <!-- CAMBIO: Input con Datalist para búsqueda rápida -->
                                         <input type="text" id="catalogToursInput" list="dl-tours-global" class="form-input text-sm flex-grow" placeholder="Buscar o escribir tour" oninput="window.checkTourMatch(this)">
                                         <datalist id="dl-tours-global"></datalist>
+                                        
                                         <button type="button" onclick="window.addTourToSelection()" class="bg-teal-600 text-white px-3 rounded hover:bg-teal-700 font-bold text-sm whitespace-nowrap">
                                             <i class="fas fa-plus"></i> Agregar
                                         </button>
@@ -192,7 +194,6 @@
                                             <tr>
                                                 <th class="p-2 w-20">Día</th>
                                                 <th class="p-2">Tour</th>
-                                                <th class="p-2 w-24 text-center">Horario</th>
                                                 <th class="p-2 w-16 text-center">Neto</th>
                                                 <th class="p-2 w-16 text-center">MG (S/.)</th>
                                                 <th class="p-2 w-16 text-center">Venta</th>
@@ -886,9 +887,11 @@
             
             const arrival = new Date(document.getElementById('arrivalDate').value);
             const departure = new Date(document.getElementById('departureDate').value);
+            // Cálculo corregido: Días Totales = (Diferencia + 1)
             const diffDays = Math.ceil(Math.abs(departure - arrival) / (1000 * 60 * 60 * 24)) + 1; 
             
             let dayOptions = '';
+            // El bucle ahora incluye el último día (<=)
             for(let i=1; i <= diffDays; i++) dayOptions += `<option value="Día ${i}">Día ${i}</option>`;
             if(!dayOptions) dayOptions = `<option value="Día 1">Día 1</option>`;
 
@@ -904,14 +907,8 @@
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-2"><select class="w-full text-xs border rounded p-1 bg-white" onchange="window.currentSelectedTours[${i}].dayLabel=this.value; window.renderSelectedToursTable()">${currentDayOptions.replace(`value="${t.dayLabel}"`, `value="${t.dayLabel}" selected`)}</select></td>
                         <td class="p-2 text-xs font-semibold text-gray-700">${t.name}</td>
-                        <td class="p-2 text-center">
-                            <div class="flex gap-1 justify-center">
-                                <input type="time" value="${t.startTime||''}" class="w-16 border text-[10px] p-0.5 rounded text-gray-600" onchange="window.currentSelectedTours[${i}].startTime=this.value">
-                                <input type="time" value="${t.endTime||''}" class="w-16 border text-[10px] p-0.5 rounded text-gray-600" onchange="window.currentSelectedTours[${i}].endTime=this.value">
-                            </div>
-                        </td>
-                        <td class="p-2 text-center"><input type="number" value="${t.price_net}" class="w-14 border text-center text-xs p-1" onchange="window.currentSelectedTours[${i}].price_net=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
-                        <td class="p-2 text-center"><input type="number" value="${t.customMargin}" class="w-12 border text-center text-xs p-1" placeholder="S/." onchange="window.currentSelectedTours[${i}].customMargin=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
+                        <td class="p-2 text-center"><input type="number" value="${t.price_net}" class="w-16 border text-center text-xs p-1" onchange="window.currentSelectedTours[${i}].price_net=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
+                        <td class="p-2 text-center"><input type="number" value="${t.customMargin}" class="w-14 border text-center text-xs p-1" placeholder="S/." onchange="window.currentSelectedTours[${i}].customMargin=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
                         <td class="p-2 font-bold text-teal-700 text-xs text-center">S/.${sell.toFixed(2)}</td>
                         <td class="p-2 text-center"><button onclick="window.currentSelectedTours.splice(${i},1);window.renderSelectedToursTable()" class="text-red-400"><i class="fas fa-times"></i></button></td>
                     </tr>`;
@@ -1315,13 +1312,13 @@
             const data = window.getProposalData();
             if(!data.clientName) return Swal.fire('Falta Nombre', 'Ingrese nombre del cliente', 'warning');
             const nights = Math.ceil((new Date(data.departure) - new Date(data.arrival))/(1000*60*60*24));
+            const days = nights + 1; 
             
             // 1. Update Itinerary List (Simple with times)
             let toursHtml = '';
             if(data.tours.length > 0) {
                 toursHtml = '<div class="space-y-2">';
                 data.tours.forEach(t => {
-                    // Formatear horario de manera flexible
                     let timeString = '';
                     if(t.startTime) timeString += t.startTime;
                     if(t.endTime) timeString += (timeString ? ' - ' : '') + t.endTime;
@@ -1341,46 +1338,32 @@
                 toursHtml += '</div>';
             } else { toursHtml = '<p class="text-gray-400 italic text-xs p-4">Sin actividades extra.</p>'; }
 
-            // 2. Create Tour Details Section (New)
+            // 2. Create Tour Details Section
             let tourDetailsHtml = '';
             if(data.tours.length > 0) {
-                // MODIFICADO: Grid de 1 columna para vista "rectangular extendida"
                 const tourGridClass = 'grid-cols-1'; 
-                
                 tourDetailsHtml = `<div class="grid ${tourGridClass} gap-6">`;
-                
                 data.tours.forEach(t => {
-                   // Helper for lists
                    const renderList = (items, icon, title, color) => {
-                       if(!items || items.length === 0) return '';
+                       if(!items || items.length === 0) return `<div class="text-[10px] text-gray-300 italic p-2">Sin datos</div>`;
                        return `
-                        <div class="mb-3">
-                            <p class="text-[10px] font-bold text-${color}-700 uppercase mb-1 flex items-center"><i class="${icon} mr-1"></i> ${title}</p>
-                            <ul class="text-xs text-gray-600 space-y-0.5 pl-1">
-                                ${items.map(i => `<li class="flex items-start"><span class="mr-1.5 text-${color}-400">•</span>${i}</li>`).join('')}
+                        <div class="h-full">
+                            <p class="text-[10px] font-bold text-${color}-700 uppercase mb-2 flex items-center border-b border-${color}-100 pb-1"><i class="${icon} mr-1"></i> ${title}</p>
+                            <ul class="text-[10px] text-gray-600 space-y-1">
+                                ${items.map(i => `<li class="flex items-start leading-tight"><span class="mr-1 text-${color}-400">•</span>${i}</li>`).join('')}
                             </ul>
                         </div>
                        `;
                    };
-                   
                    const img = t.img || placeholderImg;
-
                    tourDetailsHtml += `
                     <div class="border rounded-lg overflow-hidden flex flex-col shadow-sm bg-white avoid-break">
-                        <div class="bg-gray-100 p-2 text-center font-bold text-xs text-gray-600 border-b">${t.name}</div>
-                        <div class="p-4 flex gap-4">
-                            <!-- Imagen Vertical -->
-                            <div class="w-1/3 flex-shrink-0">
-                                <div class="h-56 rounded overflow-hidden shadow-sm relative">
-                                    <img src="${img}" class="w-full h-full object-cover">
-                                </div>
-                            </div>
-                            <!-- Detalles -->
-                            <div class="w-2/3">
-                                ${renderList(t.route, 'fas fa-map-signs', 'Recorrido', 'blue')}
-                                ${renderList(t.includes, 'fas fa-check-circle', 'Incluye', 'green')}
-                                ${renderList(t.notIncludes, 'fas fa-times-circle', 'No Incluye', 'red')}
-                            </div>
+                        <div class="bg-gray-800 text-white p-2 text-center font-bold text-xs border-b border-gray-700">${t.name}</div>
+                        <div class="p-4 grid grid-cols-4 gap-4">
+                            <div class="col-span-1"><div class="h-32 rounded overflow-hidden shadow-sm relative border border-gray-100"><img src="${img}" class="w-full h-full object-cover"></div></div>
+                            <div class="col-span-1 border-r border-gray-100 pr-2">${renderList(t.route, 'fas fa-map-signs', 'Recorrido', 'blue')}</div>
+                            <div class="col-span-1 border-r border-gray-100 pr-2">${renderList(t.includes, 'fas fa-check-circle', 'Incluye', 'green')}</div>
+                            <div class="col-span-1">${renderList(t.notIncludes, 'fas fa-times-circle', 'No Incluye', 'red')}</div>
                         </div>
                     </div>
                    `; 
@@ -1395,17 +1378,51 @@
 
             const docHtml = `
                 <div class="font-sans text-gray-800 bg-white">
-                     <div class="bg-gray-900 text-white p-5 avoid-break">
-                        <h1 class="text-2xl font-bold text-teal-400 mb-4 border-b border-gray-700 pb-2">PROPUESTA DE VIAJE</h1>
-                        <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div><p class="text-gray-400 text-xs uppercase tracking-wider mb-1">CLIENTE:</p><p class="font-bold text-lg text-white">${data.clientName}</p><p class="text-gray-400 text-xs mt-1">Asesor: ${data.agent}</p></div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div><p class="text-gray-400 text-xs uppercase tracking-wider mb-1">FECHA DE LLEGADA:</p><p class="font-semibold">${data.arrival}</p></div>
-                                <div><p class="text-gray-400 text-xs uppercase tracking-wider mb-1">FECHA DE RETORNO:</p><p class="font-semibold">${data.departure}</p></div>
-                                <div class="col-span-2"><p class="text-gray-400 text-xs uppercase tracking-wider mb-1">CANTIDAD DE PERSONAS:</p><p class="font-semibold bg-teal-800 inline-block px-3 py-1 rounded">${data.pax}</p></div>
+                     <div class="bg-gray-900 text-white p-6 avoid-break">
+                        <!-- Título y Duración -->
+                        <div class="flex justify-between items-end border-b border-gray-700 pb-3 mb-6">
+                            <h1 class="text-3xl font-bold text-teal-400 tracking-tight">PROPUESTA DE VIAJE</h1>
+                            <span class="text-xl font-bold text-teal-400 uppercase tracking-widest">${days} DÍAS Y ${nights} NOCHES</span>
+                        </div>
+                        
+                        <!-- HEADER REESTRUCTURADO 50% - 50% -->
+                        <div class="grid grid-cols-2 gap-8 text-sm items-center">
+                            
+                            <!-- COLUMNA IZQUIERDA (50%): Cliente y Asesor -->
+                            <div class="border-r border-gray-700 pr-6">
+                                <div class="mb-3">
+                                    <p class="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-1">CLIENTE</p>
+                                    <p class="font-bold text-2xl text-white leading-none truncate" title="${data.clientName}">${data.clientName}</p>
+                                </div>
+                                <div>
+                                    <p class="text-teal-500 text-xs font-medium truncate"><span class="text-gray-500 text-[10px] uppercase tracking-wider font-bold mr-2">ASESOR:</span>${data.agent}</p>
+                                </div>
                             </div>
+
+                            <!-- COLUMNA DERECHA (50%): Viajeros, Llegada, Retorno -->
+                            <div class="grid grid-cols-3 gap-4 text-center">
+                                <!-- Viajeros -->
+                                <div>
+                                    <p class="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-1">VIAJEROS</p>
+                                    <div class="inline-block bg-teal-900 text-white px-4 py-1.5 rounded font-bold text-lg border border-teal-700 shadow-sm w-full">
+                                        ${data.pax}
+                                    </div>
+                                </div>
+                                <!-- Llegada -->
+                                <div class="border-l border-gray-700 pl-4">
+                                    <p class="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-1">LLEGADA</p>
+                                    <p class="font-bold text-white text-sm tracking-wide">${data.arrival}</p>
+                                </div>
+                                <!-- Retorno -->
+                                <div class="border-l border-gray-700 pl-4">
+                                    <p class="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-1">RETORNO</p>
+                                    <p class="font-bold text-white text-sm tracking-wide">${data.departure}</p>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
+                    
                     <div class="p-8">
                         
                         <!-- 1. RESUMEN -->
@@ -1416,12 +1433,12 @@
                         <!-- 2. ITINERARIO RESUMIDO -->
                         <div class="mb-8 avoid-break"><h2 class="text-lg font-bold text-gray-700 border-b-2 border-blue-500 inline-block mb-4">Itinerario de Actividades</h2><div class="border rounded-lg bg-white overflow-hidden">${toursHtml}</div></div>
 
-                        <!-- 3. DETALLE TOURS (MOVIDO ANTES DE HOTELES) -->
+                        <!-- 3. DETALLE TOURS -->
                         <div class="mb-8"><h2 class="text-lg font-bold text-gray-700 border-b-2 border-purple-500 inline-block mb-4">Detalles de Tours & Experiencias</h2>
                              ${tourDetailsHtml}
                         </div>
 
-                        <!-- 4. ALOJAMIENTO (MOVIDO AL FINAL) -->
+                        <!-- 4. ALOJAMIENTO -->
                         <div class="mb-8"><h2 class="text-lg font-bold text-gray-700 border-b-2 border-teal-500 inline-block mb-4">Opciones de Alojamiento</h2>
                             <div class="grid ${gridClass} gap-4">
                                 ${data.options.map((opt, idx) => `
@@ -1461,6 +1478,7 @@
                 p.options.forEach(opt => {
                     window.addOptionGroup();
                     const card = document.getElementById('hotel-options-wrapper').lastElementChild;
+                    // No top-level margin loading needed as it is per segment now
                     const container = card.querySelector('.hotel-segments-container');
                     if(opt.segments) {
                         opt.segments.forEach(seg => {
