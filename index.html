@@ -605,18 +605,22 @@
         const publicPath = (coll) => collection(db, 'artifacts', appId, 'public', 'data', coll);
         const publicDoc = (coll, id) => doc(db, 'artifacts', appId, 'public', 'data', coll, id);
 
-        // --- STORAGE HELPER ---
+        // --- STORAGE HELPER (UPDATED FOR EFFICIENCY & NO VALIDATION BLOCK) ---
         window.uploadImageToStorage = async (file, folder = 'misc') => {
             if (!file) return null;
             try {
                 // Nombre unico: timestamp_nombre
-                const storageRef = ref(storage, `${folder}/${Date.now()}_${file.name}`);
-                await uploadBytes(storageRef, file);
-                const url = await getDownloadURL(storageRef);
+                // Clean filename
+                const cleanName = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
+                const storageRef = ref(storage, `${folder}/${Date.now()}_${cleanName}`);
+                
+                // Upload
+                const snapshot = await uploadBytes(storageRef, file);
+                const url = await getDownloadURL(snapshot.ref);
                 return url;
             } catch (e) {
                 console.error("Upload failed", e);
-                Swal.fire('Error', 'Fallo al subir imagen: ' + e.message, 'error');
+                // REMOVED ALERT VALIDATION as requested to prevent hanging flow
                 return null;
             }
         };
@@ -914,17 +918,27 @@
                     const name = document.getElementById('newTourName').value;
                     if(!name) throw new Error("Nombre requerido");
 
-                    // Upload 3 Images
-                    const images = [];
+                    // Upload 3 Images in PARALLEL
+                    const imagePromises = [];
                     for(let i=1; i<=3; i++) {
                         const fileIn = document.getElementById(`newTourImgFile${i}`);
                         let existingUrl = document.getElementById(`newTourImgUrl${i}`).value;
+                        
                         if(fileIn.files.length > 0) {
-                            const url = await window.uploadImageToStorage(fileIn.files[0], 'tours');
-                            if(url) existingUrl = url;
+                            // Start upload and return either new url or null (handled in uploadImageToStorage)
+                            // If null is returned (fail), fallback to existing if any
+                            imagePromises.push(
+                                window.uploadImageToStorage(fileIn.files[0], 'tours')
+                                    .then(url => url || existingUrl) 
+                            );
+                        } else {
+                            imagePromises.push(Promise.resolve(existingUrl));
                         }
-                        if(existingUrl) images.push(existingUrl);
                     }
+                    
+                    const uploadedImages = await Promise.all(imagePromises);
+                    // Filter empty strings
+                    const images = uploadedImages.filter(url => url);
 
                     const getListValues = (id) => Array.from(document.getElementById(id).querySelectorAll('.dynamic-list-check:checked')).map(cb => cb.value);
 
