@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TravelManager Pro v3 - Perú</title>
+    <title>TravelManager Pro v3 - Cloud Storage</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
@@ -26,7 +26,7 @@
                 background-color: white; 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important; 
-                margin: 1cm !important; 
+                margin: 0 !important; 
             }
             .shadow-lg { box-shadow: none; border: 1px solid #ddd; }
             .page-break { page-break-before: always; }
@@ -78,7 +78,7 @@
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center gap-2">
                     <i class="fas fa-plane-departure text-teal-600 text-2xl"></i>
-                    <span class="font-bold text-xl tracking-tight text-gray-800">TravelManager</span>
+                    <span class="font-bold text-xl tracking-tight text-gray-800">TravelManager <span class="text-xs font-normal text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">Cloud</span></span>
                 </div>
                 <div class="flex space-x-1">
                     <button onclick="window.switchView('cotizacion')" id="btn-cotizacion" class="nav-btn active">
@@ -106,7 +106,7 @@
         <div id="loading-overlay" class="absolute inset-0 bg-white/90 z-[60] flex items-center justify-center backdrop-blur-sm hidden">
             <div class="text-center">
                 <i class="fas fa-circle-notch fa-spin text-4xl text-teal-600 mb-3"></i>
-                <p class="text-sm font-semibold text-gray-600">Sincronizando Sistema...</p>
+                <p class="text-sm font-semibold text-gray-600" id="loading-text">Sincronizando Sistema...</p>
                 <p class="text-xs text-gray-400 mt-2">Estableciendo conexión segura</p>
             </div>
         </div>
@@ -176,12 +176,18 @@
                                 <h3 class="font-bold text-teal-800 mb-2 border-b border-teal-200 pb-1">2. Tours & Actividades</h3>
                                 
                                 <div class="mb-3">
-                                    <label class="text-xs font-bold text-gray-500 mb-1 block">Agregar Tour:</label>
+                                    <label class="text-xs font-bold text-gray-500 mb-1 block">Agregar Item:</label>
                                     <div class="flex gap-2">
-                                        <input type="text" id="catalogToursInput" list="dl-tours-global" class="form-input text-sm flex-grow" placeholder="Buscar o escribir tour" oninput="window.checkTourMatch(this)">
+                                        <!-- NUEVO SELECTOR DE TIPO -->
+                                        <select id="addItemType" class="form-input text-sm w-32 border-teal-300 bg-white" onchange="window.updateDatalistSource()">
+                                            <option value="tour">Tour</option>
+                                            <option value="transport">Transporte</option>
+                                        </select>
+                                        
+                                        <input type="text" id="catalogToursInput" list="dl-tours-global" class="form-input text-sm flex-grow" placeholder="Buscar o escribir..." oninput="window.checkTourMatch(this)">
                                         <datalist id="dl-tours-global"></datalist>
                                         <button type="button" onclick="window.addTourToSelection()" class="bg-teal-600 text-white px-3 rounded hover:bg-teal-700 font-bold text-sm whitespace-nowrap">
-                                            <i class="fas fa-plus"></i> Agregar
+                                            <i class="fas fa-plus"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -191,7 +197,7 @@
                                         <thead class="bg-gray-100 uppercase font-bold text-gray-600">
                                             <tr>
                                                 <th class="p-2 w-20">Día</th>
-                                                <th class="p-2">Tour</th>
+                                                <th class="p-2">Actividad</th>
                                                 <th class="p-2 w-16 text-center">Neto</th>
                                                 <th class="p-2 w-16 text-center">MG (S/.)</th>
                                                 <th class="p-2 w-16 text-center">Venta</th>
@@ -200,7 +206,7 @@
                                         </thead>
                                         <tbody id="selected-tours-body"></tbody>
                                     </table>
-                                    <div id="no-tours-msg" class="p-4 text-center text-gray-400 italic text-xs">Sin tours seleccionados.</div>
+                                    <div id="no-tours-msg" class="p-4 text-center text-gray-400 italic text-xs">Sin items seleccionados.</div>
                                 </div>
                             </div>
 
@@ -276,11 +282,12 @@
                         <div class="grid grid-cols-1 gap-2 mb-2">
                             <input type="text" id="newHotelName" placeholder="Nombre Hotel" class="form-input text-sm">
                             <input type="text" id="newHotelZone" placeholder="Zona/Ciudad" class="form-input text-sm">
-                            <!-- Input de imagen cambiado a file -->
+                            <!-- Input de imagen -->
                             <div class="border rounded p-2 bg-white">
                                 <label class="text-[10px] text-gray-500 block mb-1">Imagen del Hotel:</label>
-                                <input type="file" id="newHotelImgFile" accept="image/*" class="w-full text-xs" onchange="window.handleImageUpload(this, 'hotelImgPreview')">
-                                <input type="hidden" id="newHotelImgBase64">
+                                <input type="file" id="newHotelImgFile" accept="image/*" class="w-full text-xs" onchange="window.handleImagePreview(this, 'hotelImgPreview', 'newHotelImgUrl')">
+                                <!-- Hidden field to store EXISTING URL if editing and not changing -->
+                                <input type="hidden" id="newHotelImgUrl">
                                 <img id="hotelImgPreview" class="h-20 w-full object-cover mt-2 hidden rounded">
                             </div>
                             
@@ -356,36 +363,36 @@
                             <div class="grid grid-cols-3 gap-2">
                                 <!-- IMG 1 -->
                                 <div class="relative border-2 border-dashed border-gray-300 bg-white rounded-lg h-32 flex items-center justify-center hover:bg-blue-50 transition group">
-                                    <input type="file" id="newTourImgFile1" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleTourImageUpload(this, 1)">
+                                    <input type="file" id="newTourImgFile1" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleImagePreview(this, 'tourImgPreview1', 'newTourImgUrl1')">
                                     <div id="tourUploadPlaceholder1" class="pointer-events-none text-center">
                                         <span class="text-[9px] text-gray-400 font-bold block">FOTO 1</span>
                                         <i class="fas fa-plus text-gray-300"></i>
                                     </div>
                                     <img id="tourImgPreview1" class="absolute inset-0 w-full h-full object-cover rounded hidden pointer-events-none">
                                     <button type="button" onclick="window.clearTourImage(1)" class="absolute top-0 right-0 bg-red-500 text-white rounded-bl-lg w-5 h-5 flex items-center justify-center text-[10px] z-20 hidden" id="btnDelTourImg1">×</button>
-                                    <input type="hidden" id="newTourImgBase64_1">
+                                    <input type="hidden" id="newTourImgUrl1">
                                 </div>
                                 <!-- IMG 2 -->
                                 <div class="relative border-2 border-dashed border-gray-300 bg-white rounded-lg h-32 flex items-center justify-center hover:bg-blue-50 transition group">
-                                    <input type="file" id="newTourImgFile2" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleTourImageUpload(this, 2)">
+                                    <input type="file" id="newTourImgFile2" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleImagePreview(this, 'tourImgPreview2', 'newTourImgUrl2')">
                                     <div id="tourUploadPlaceholder2" class="pointer-events-none text-center">
                                         <span class="text-[9px] text-gray-400 font-bold block">FOTO 2</span>
                                         <i class="fas fa-plus text-gray-300"></i>
                                     </div>
                                     <img id="tourImgPreview2" class="absolute inset-0 w-full h-full object-cover rounded hidden pointer-events-none">
                                     <button type="button" onclick="window.clearTourImage(2)" class="absolute top-0 right-0 bg-red-500 text-white rounded-bl-lg w-5 h-5 flex items-center justify-center text-[10px] z-20 hidden" id="btnDelTourImg2">×</button>
-                                    <input type="hidden" id="newTourImgBase64_2">
+                                    <input type="hidden" id="newTourImgUrl2">
                                 </div>
                                 <!-- IMG 3 -->
                                 <div class="relative border-2 border-dashed border-gray-300 bg-white rounded-lg h-32 flex items-center justify-center hover:bg-blue-50 transition group">
-                                    <input type="file" id="newTourImgFile3" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleTourImageUpload(this, 3)">
+                                    <input type="file" id="newTourImgFile3" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleImagePreview(this, 'tourImgPreview3', 'newTourImgUrl3')">
                                     <div id="tourUploadPlaceholder3" class="pointer-events-none text-center">
                                         <span class="text-[9px] text-gray-400 font-bold block">FOTO 3</span>
                                         <i class="fas fa-plus text-gray-300"></i>
                                     </div>
                                     <img id="tourImgPreview3" class="absolute inset-0 w-full h-full object-cover rounded hidden pointer-events-none">
                                     <button type="button" onclick="window.clearTourImage(3)" class="absolute top-0 right-0 bg-red-500 text-white rounded-bl-lg w-5 h-5 flex items-center justify-center text-[10px] z-20 hidden" id="btnDelTourImg3">×</button>
-                                    <input type="hidden" id="newTourImgBase64_3">
+                                    <input type="hidden" id="newTourImgUrl3">
                                 </div>
                             </div>
                         </div>
@@ -507,6 +514,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // IMPORT STORAGE
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyADhmnQAZIE_t2NBKGlMbKrSpPXwqoyCb8",
@@ -520,23 +529,15 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const storage = getStorage(app); // Init Storage
+        
         const appId = 'travel-manager-pro'; 
         let userId = null;
 
-        // AUTH FLOW (Anónimo)
+        // AUTH FLOW
         const initAuth = async () => {
-            try {
-                await signInAnonymously(auth);
-            } catch (error) {
-                console.error("Auth Error:", error);
-                document.getElementById('loading-overlay').innerHTML = `
-                    <div class="bg-white p-6 rounded-lg shadow-xl text-center">
-                        <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-2"></i>
-                        <p class="text-red-700 font-bold">Error de Conexión</p>
-                        <p class="text-sm text-gray-600 mt-2">No se pudo conectar a Firebase.</p>
-                        <button onclick="location.reload()" class="mt-4 bg-teal-600 text-white px-4 py-2 rounded">Reintentar</button>
-                    </div>`;
-            }
+            try { await signInAnonymously(auth); } 
+            catch (error) { console.error("Auth Error:", error); }
         };
         initAuth();
 
@@ -547,7 +548,7 @@
         window.savedProposals = [];
         window.currentSelectedTours = [];
 
-        // AUTH LISTENER & DATA SYNC (USING PUBLIC DATA FOR SHARED ACCESS)
+        // AUTH LISTENER
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 userId = user.uid;
@@ -557,7 +558,6 @@
         });
 
         function subscribeToData() {
-            // FIX: Use PUBLIC collection path for shared access across devices
             const hotelsRef = collection(db, 'artifacts', appId, 'public', 'data', 'hotels');
             const toursRef = collection(db, 'artifacts', appId, 'public', 'data', 'tours');
             const transportsRef = collection(db, 'artifacts', appId, 'public', 'data', 'transports');
@@ -571,13 +571,11 @@
 
             onSnapshot(hotelsRef, (snapshot) => {
                 window.catalogHotels = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Populate Datalists
                 const dlHotels = document.getElementById('dl-hotels-global');
                 const dlLocs = document.getElementById('dl-locations-global');
                 dlHotels.innerHTML = window.catalogHotels.map(h => `<option value="${h.name}">${h.zone}</option>`).join('');
                 const zones = [...new Set(window.catalogHotels.map(h => h.zone).filter(z=>z))];
                 dlLocs.innerHTML = zones.map(z => `<option value="${z}">`).join('');
-                
                 window.renderCatalogTables();
                 window.populateCatalogDropdowns();
                 checkLoaded();
@@ -585,8 +583,6 @@
 
             onSnapshot(toursRef, (snapshot) => {
                 window.catalogTours = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const dlTours = document.getElementById('dl-tours-global');
-                dlTours.innerHTML = window.catalogTours.map(t => `<option value="${t.name}">Neto: S/.${t.price_net}</option>`).join('');
                 window.renderCatalogTables();
                 window.populateCatalogDropdowns();
                 checkLoaded();
@@ -595,6 +591,7 @@
             onSnapshot(transportsRef, (snapshot) => {
                 window.catalogTransports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 window.renderCatalogTables();
+                window.populateCatalogDropdowns();
             });
 
             onSnapshot(propsRef, (snapshot) => {
@@ -604,9 +601,25 @@
             });
         }
 
-        // --- FIRESTORE CRUD HELPERS (PUBLIC PATHS) ---
+        // --- FIRESTORE CRUD HELPERS ---
         const publicPath = (coll) => collection(db, 'artifacts', appId, 'public', 'data', coll);
         const publicDoc = (coll, id) => doc(db, 'artifacts', appId, 'public', 'data', coll, id);
+
+        // --- STORAGE HELPER ---
+        window.uploadImageToStorage = async (file, folder = 'misc') => {
+            if (!file) return null;
+            try {
+                // Nombre unico: timestamp_nombre
+                const storageRef = ref(storage, `${folder}/${Date.now()}_${file.name}`);
+                await uploadBytes(storageRef, file);
+                const url = await getDownloadURL(storageRef);
+                return url;
+            } catch (e) {
+                console.error("Upload failed", e);
+                Swal.fire('Error', 'Fallo al subir imagen: ' + e.message, 'error');
+                return null;
+            }
+        };
 
         window.fsAddHotel = async (data) => await addDoc(publicPath('hotels'), data);
         window.fsUpdateHotel = async (id, data) => await updateDoc(publicDoc('hotels', id), data);
@@ -622,14 +635,10 @@
 
         window.fsSaveProposal = async (data) => {
             if(!userId) { Swal.fire('Error', 'No autenticado', 'error'); return; }
-            let isUpdate = false;
-            if(data.id && data.id.toString().length > 15) {
-               if(window.savedProposals.some(p => p.id === data.id)) isUpdate = true;
-            }
-            if (isUpdate) {
+            if(data.id && data.id.toString().length > 15 && window.savedProposals.some(p => p.id === data.id)) {
                 await setDoc(publicDoc('proposals', data.id), data);
             } else {
-                const { id, ...docData } = data; // Remove temp timestamp ID
+                const { id, ...docData } = data;
                 await addDoc(publicPath('proposals'), docData);
             }
         }
@@ -639,7 +648,16 @@
 
     <!-- LOGICA DE LA APLICACIÓN -->
     <script>
-        const placeholderImg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+        const placeholderImg = "https://placehold.co/400x300?text=Sin+Imagen";
+
+        // --- LOADING HELPER ---
+        window.showLoading = (msg) => {
+            document.getElementById('loading-text').innerText = msg;
+            document.getElementById('loading-overlay').classList.remove('hidden');
+        }
+        window.hideLoading = () => {
+            document.getElementById('loading-overlay').classList.add('hidden');
+        }
 
         // --- NAVIGATION ---
         window.switchView = (viewName) => {
@@ -656,12 +674,7 @@
         window.addDynamicItem = (containerId, inputId, value = null) => {
             let text = value;
             const input = inputId ? document.getElementById(inputId) : null;
-            
-            if (!text && input) {
-                text = input.value.trim();
-                input.value = ''; // Limpiar input
-            }
-            
+            if (!text && input) { text = input.value.trim(); input.value = ''; }
             if (!text) return;
 
             const container = document.getElementById(containerId);
@@ -680,18 +693,12 @@
             const input = document.getElementById('customAmenityInput');
             const text = val || input.value.trim();
             if(!text) return;
-            
             const container = document.getElementById('amenities-checkbox-container');
-            if(Array.from(container.querySelectorAll('input')).some(i => i.value.toLowerCase() === text.toLowerCase())) {
-                if(!val) alert('Ya existe');
-                return;
-            }
-
+            if(Array.from(container.querySelectorAll('input')).some(i => i.value.toLowerCase() === text.toLowerCase())) return;
             const label = document.createElement('label');
             label.className = "flex items-center space-x-2 cursor-pointer";
             label.innerHTML = `<input type="checkbox" class="amenity-checkbox text-teal-600 rounded" value="${text}" checked><span class="text-xs text-gray-600">${text}</span>`;
             container.appendChild(label);
-            
             if(!val) input.value = '';
         }
 
@@ -703,62 +710,58 @@
                 <td class="p-1"><input type="number" class="w-full border p-1 text-xs room-cap-input" placeholder="Pax" value="${cap}"></td>
                 <td class="p-1"><input type="number" class="w-full border p-1 text-xs room-price-input" placeholder="S/." value="${price}"></td>
                 <td class="p-1">
-                    <input type="file" accept="image/*" class="w-full text-[10px]" onchange="window.handleRoomImageUpload(this)">
+                    <input type="file" accept="image/*" class="w-full text-[10px]" onchange="window.handleRoomImagePreview(this)">
                     <input type="hidden" class="room-img-input" value="${img}">
-                    ${img ? `<img src="${img}" class="h-8 w-8 object-cover mt-1 inline-block">` : ''}
+                    <img src="${img || ''}" class="h-8 w-8 object-cover mt-1 ${img?'':'hidden'} room-img-preview">
                 </td>
                 <td class="p-1 text-center"><button onclick="this.closest('tr').remove()" class="text-red-500 text-xs">x</button></td>
             `;
             tbody.appendChild(tr);
         }
 
-        window.handleRoomImageUpload = (input) => {
+        // --- PREVIEW HANDLERS (LOCAL BASE64 FOR UX) ---
+        window.handleImagePreview = (input, imgId, hiddenId) => {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    const base64 = e.target.result;
-                    if(base64.length > 800000) { alert("Imagen muy grande. Max 800kb."); input.value=""; return; }
-                    const container = input.parentElement;
-                    container.querySelector('.room-img-input').value = base64;
+                    const preview = document.getElementById(imgId);
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    // Hide placeholder if exists
+                    const ph = input.parentElement.querySelector('div[id^="tourUploadPlaceholder"]');
+                    if(ph) ph.classList.add('hidden');
+                    // Show delete btn if exists
+                    const btn = input.parentElement.querySelector('button[id^="btnDel"]');
+                    if(btn) btn.classList.remove('hidden');
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         }
-        
-        window.handleTourImageUpload = (input, index) => {
+
+        window.handleRoomImagePreview = (input) => {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    const base64 = e.target.result;
-                    if(base64.length > 1000000) { alert("Imagen muy grande. Intente optimizarla (Max 1MB)."); input.value=""; return; }
-                    
-                    document.getElementById(`newTourImgBase64_${index}`).value = base64;
-                    const preview = document.getElementById(`tourImgPreview${index}`);
-                    preview.src = base64;
-                    preview.classList.remove('hidden');
-                    document.getElementById(`tourUploadPlaceholder${index}`).classList.add('hidden');
-                    document.getElementById(`btnDelTourImg${index}`).classList.remove('hidden');
+                    const img = input.parentElement.querySelector('.room-img-preview');
+                    img.src = e.target.result;
+                    img.classList.remove('hidden');
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         }
 
         window.clearTourImage = (index) => {
-            // No prevenimos default aqui porque es un button normal fuera del input
             document.getElementById(`newTourImgFile${index}`).value = '';
-            document.getElementById(`newTourImgBase64_${index}`).value = '';
-            
+            document.getElementById(`newTourImgUrl${index}`).value = ''; // Clear stored URL
             const preview = document.getElementById(`tourImgPreview${index}`);
             preview.src = '';
             preview.classList.add('hidden');
-            
             document.getElementById(`tourUploadPlaceholder${index}`).classList.remove('hidden');
             document.getElementById(`btnDelTourImg${index}`).classList.add('hidden');
         }
 
         window.editCatalogItem = (type, id) => {
             const isEdit = id !== null;
-            
             if(type === 'hotel') {
                 document.getElementById('hotel-form-container').classList.remove('hidden');
                 document.getElementById('tour-form-container').classList.add('hidden');
@@ -774,50 +777,39 @@
                     const h = window.catalogHotels.find(x => x.id == id);
                     document.getElementById('newHotelName').value = h.name;
                     document.getElementById('newHotelZone').value = h.zone;
-                    document.getElementById('newHotelImgBase64').value = h.img;
+                    document.getElementById('newHotelImgUrl').value = h.img || ''; // Store URL
+                    
                     const preview = document.getElementById('hotelImgPreview');
                     preview.src = h.img || '';
                     if(h.img) preview.classList.remove('hidden'); else preview.classList.add('hidden');
                     
-                    // Set checkboxes from array
                     if (h.amenities) {
                         h.amenities.forEach(am => {
                             let cb = document.querySelector(`.amenity-checkbox[value="${am}"]`);
-                            if (!cb) {
-                                window.addCustomAmenity(am);
-                                cb = document.querySelector(`.amenity-checkbox[value="${am}"]`);
-                            }
+                            if (!cb) { window.addCustomAmenity(am); cb = document.querySelector(`.amenity-checkbox[value="${am}"]`); }
                             if (cb) cb.checked = true;
                         });
                     }
-                    
                     if(h.rooms && h.rooms.length > 0) {
                         h.rooms.forEach(r => window.addRoomInputRow(r.name, r.capacity, r.price, r.img));
-                    } else {
-                        window.addRoomInputRow();
-                    }
+                    } else { window.addRoomInputRow(); }
                 } else {
                     document.getElementById('newHotelName').value = '';
                     document.getElementById('newHotelZone').value = '';
-                    document.getElementById('newHotelImgBase64').value = '';
+                    document.getElementById('newHotelImgUrl').value = '';
                     document.getElementById('hotelImgPreview').classList.add('hidden');
-                    document.getElementById('newHotelAmenities').value = '';
                     window.addRoomInputRow();
                 }
             } else if (type === 'tour') {
-                // TOUR LOGIC UPDATED
                 document.getElementById('tour-form-container').classList.remove('hidden');
                 document.getElementById('hotel-form-container').classList.add('hidden');
                 document.getElementById('transport-form-container').classList.add('hidden');
                 document.getElementById('editTourId').value = isEdit ? id : '';
-                
-                // Limpiar listas dinámicas y campos
                 document.getElementById('tour-route-container').innerHTML = '';
                 document.getElementById('tour-includes-container').innerHTML = '';
                 document.getElementById('tour-not-includes-container').innerHTML = '';
-                window.clearTourImage(1);
-                window.clearTourImage(2);
-                window.clearTourImage(3);
+                
+                [1,2,3].forEach(i => window.clearTourImage(i));
 
                 if(isEdit) {
                     const t = window.catalogTours.find(x => x.id == id);
@@ -827,32 +819,17 @@
                     document.getElementById('newTourStart').value = t.startTime || '';
                     document.getElementById('newTourEnd').value = t.endTime || '';
                     
-                    // Cargar Imágenes (Soporte Legacy single img y Nuevo Array)
                     const imgs = t.images || (t.img ? [t.img] : []);
-                    
-                    if(imgs[0]) {
-                        document.getElementById('newTourImgBase64_1').value = imgs[0];
-                        document.getElementById('tourImgPreview1').src = imgs[0];
-                        document.getElementById('tourImgPreview1').classList.remove('hidden');
-                        document.getElementById('tourUploadPlaceholder1').classList.add('hidden');
-                        document.getElementById('btnDelTourImg1').classList.remove('hidden');
-                    }
-                    if(imgs[1]) {
-                        document.getElementById('newTourImgBase64_2').value = imgs[1];
-                        document.getElementById('tourImgPreview2').src = imgs[1];
-                        document.getElementById('tourImgPreview2').classList.remove('hidden');
-                        document.getElementById('tourUploadPlaceholder2').classList.add('hidden');
-                        document.getElementById('btnDelTourImg2').classList.remove('hidden');
-                    }
-                    if(imgs[2]) {
-                        document.getElementById('newTourImgBase64_3').value = imgs[2];
-                        document.getElementById('tourImgPreview3').src = imgs[2];
-                        document.getElementById('tourImgPreview3').classList.remove('hidden');
-                        document.getElementById('tourUploadPlaceholder3').classList.add('hidden');
-                        document.getElementById('btnDelTourImg3').classList.remove('hidden');
-                    }
+                    imgs.forEach((url, idx) => {
+                        const i = idx + 1;
+                        if(i > 3) return;
+                        document.getElementById(`newTourImgUrl${i}`).value = url;
+                        document.getElementById(`tourImgPreview${i}`).src = url;
+                        document.getElementById(`tourImgPreview${i}`).classList.remove('hidden');
+                        document.getElementById(`tourUploadPlaceholder${i}`).classList.add('hidden');
+                        document.getElementById(`btnDelTourImg${i}`).classList.remove('hidden');
+                    });
 
-                    // Cargar listas
                     if(t.route) t.route.forEach(x => window.addDynamicItem('tour-route-container', null, x));
                     if(t.includes) t.includes.forEach(x => window.addDynamicItem('tour-includes-container', null, x));
                     if(t.notIncludes) t.notIncludes.forEach(x => window.addDynamicItem('tour-not-includes-container', null, x));
@@ -867,9 +844,7 @@
                 document.getElementById('transport-form-container').classList.remove('hidden');
                 document.getElementById('hotel-form-container').classList.add('hidden');
                 document.getElementById('tour-form-container').classList.add('hidden');
-
                 document.getElementById('editTransportId').value = isEdit ? id : '';
-                
                 if(isEdit) {
                     const tr = window.catalogTransports.find(x => x.id == id);
                     document.getElementById('newTransportName').value = tr.name;
@@ -881,72 +856,107 @@
             }
         }
 
-        window.saveCatalogItem = (type) => {
-            if(type === 'hotel') {
-                const id = document.getElementById('editHotelId').value;
-                const name = document.getElementById('newHotelName').value;
-                if(!name) return Swal.fire('Error', 'Nombre requerido', 'error');
+        // --- SAVE LOGIC WITH STORAGE UPLOAD ---
+        window.saveCatalogItem = async (type) => {
+            window.showLoading("Guardando...");
+            
+            try {
+                if(type === 'hotel') {
+                    const id = document.getElementById('editHotelId').value;
+                    const name = document.getElementById('newHotelName').value;
+                    if(!name) throw new Error("Nombre requerido");
 
-                const rooms = [];
-                document.querySelectorAll('#hotel-rooms-body tr').forEach(tr => {
-                    const rName = tr.querySelector('.room-name-input').value;
-                    const rCap = tr.querySelector('.room-cap-input').value;
-                    const rPrice = tr.querySelector('.room-price-input').value;
-                    const rImg = tr.querySelector('.room-img-input').value;
-                    if(rName) rooms.push({ name: rName, capacity: parseInt(rCap)||1, price: parseFloat(rPrice)||0, img: rImg });
-                });
+                    // 1. Upload Main Image
+                    const imgInput = document.getElementById('newHotelImgFile');
+                    let imgUrl = document.getElementById('newHotelImgUrl').value;
+                    
+                    if(imgInput.files.length > 0) {
+                        const uploadedUrl = await window.uploadImageToStorage(imgInput.files[0], 'hotels');
+                        if(uploadedUrl) imgUrl = uploadedUrl;
+                    }
+                    if(!imgUrl) imgUrl = placeholderImg;
 
-                // Get amenities from checkboxes
-                const amenities = Array.from(document.querySelectorAll('.amenity-checkbox:checked')).map(cb => cb.value);
+                    // 2. Process Rooms (Async Uploads)
+                    const roomRows = Array.from(document.querySelectorAll('#hotel-rooms-body tr'));
+                    const rooms = await Promise.all(roomRows.map(async (tr) => {
+                        const rName = tr.querySelector('.room-name-input').value;
+                        const rCap = tr.querySelector('.room-cap-input').value;
+                        const rPrice = tr.querySelector('.room-price-input').value;
+                        const rImgInput = tr.querySelector('input[type="file"]');
+                        let rImgUrl = tr.querySelector('.room-img-input').value; // Existing URL or empty
 
-                const imgBase64 = document.getElementById('newHotelImgBase64').value || placeholderImg;
-                const data = {
-                    name: name,
-                    zone: document.getElementById('newHotelZone').value,
-                    img: imgBase64,
-                    amenities: amenities,
-                    rooms: rooms
-                };
+                        if(rName) {
+                            if(rImgInput.files.length > 0) {
+                                const url = await window.uploadImageToStorage(rImgInput.files[0], 'rooms');
+                                if(url) rImgUrl = url;
+                            }
+                            return { name: rName, capacity: parseInt(rCap)||1, price: parseFloat(rPrice)||0, img: rImgUrl };
+                        }
+                        return null;
+                    }));
 
-                if(id) window.fsUpdateHotel(id, data); else window.fsAddHotel(data);
-                window.toggleForm('hotel-form-container');
+                    const validRooms = rooms.filter(r => r !== null);
+                    const amenities = Array.from(document.querySelectorAll('.amenity-checkbox:checked')).map(cb => cb.value);
 
-            } else {
-                // SAVE TOUR UPDATED
-                const id = document.getElementById('editTourId').value;
-                const name = document.getElementById('newTourName').value;
-                if(!name) return Swal.fire('Error', 'Nombre requerido', 'error');
-                
-                // Recopilar listas dinámicas
-                const getListValues = (containerId) => {
-                    const container = document.getElementById(containerId);
-                    return Array.from(container.querySelectorAll('.dynamic-list-check:checked')).map(cb => cb.value);
-                };
+                    const data = {
+                        name: name,
+                        zone: document.getElementById('newHotelZone').value,
+                        img: imgUrl,
+                        amenities: amenities,
+                        rooms: validRooms
+                    };
 
-                // Recopilar 3 imágenes
-                const images = [];
-                const img1 = document.getElementById('newTourImgBase64_1').value;
-                const img2 = document.getElementById('newTourImgBase64_2').value;
-                const img3 = document.getElementById('newTourImgBase64_3').value;
-                
-                if(img1) images.push(img1);
-                if(img2) images.push(img2);
-                if(img3) images.push(img3);
+                    if(id) await window.fsUpdateHotel(id, data); else await window.fsAddHotel(data);
+                    window.toggleForm('hotel-form-container');
 
-                const data = {
-                    name,
-                    price_net: parseFloat(document.getElementById('newTourPrice').value)||0,
-                    desc: document.getElementById('newTourDesc').value,
-                    startTime: document.getElementById('newTourStart').value,
-                    endTime: document.getElementById('newTourEnd').value,
-                    img: images[0] || '', // Maintain legacy primary
-                    images: images, // New array support
-                    route: getListValues('tour-route-container'),
-                    includes: getListValues('tour-includes-container'),
-                    notIncludes: getListValues('tour-not-includes-container')
-                };
-                if(id) window.fsUpdateTour(id, data); else window.fsAddTour(data);
-                window.toggleForm('tour-form-container');
+                } else if (type === 'tour') {
+                    const id = document.getElementById('editTourId').value;
+                    const name = document.getElementById('newTourName').value;
+                    if(!name) throw new Error("Nombre requerido");
+
+                    // Upload 3 Images
+                    const images = [];
+                    for(let i=1; i<=3; i++) {
+                        const fileIn = document.getElementById(`newTourImgFile${i}`);
+                        let existingUrl = document.getElementById(`newTourImgUrl${i}`).value;
+                        if(fileIn.files.length > 0) {
+                            const url = await window.uploadImageToStorage(fileIn.files[0], 'tours');
+                            if(url) existingUrl = url;
+                        }
+                        if(existingUrl) images.push(existingUrl);
+                    }
+
+                    const getListValues = (id) => Array.from(document.getElementById(id).querySelectorAll('.dynamic-list-check:checked')).map(cb => cb.value);
+
+                    const data = {
+                        name,
+                        price_net: parseFloat(document.getElementById('newTourPrice').value)||0,
+                        desc: document.getElementById('newTourDesc').value,
+                        startTime: document.getElementById('newTourStart').value,
+                        endTime: document.getElementById('newTourEnd').value,
+                        img: images[0] || '', // Legacy
+                        images: images,
+                        route: getListValues('tour-route-container'),
+                        includes: getListValues('tour-includes-container'),
+                        notIncludes: getListValues('tour-not-includes-container')
+                    };
+
+                    if(id) await window.fsUpdateTour(id, data); else await window.fsAddTour(data);
+                    window.toggleForm('tour-form-container');
+                } else if (type === 'transport') {
+                    const id = document.getElementById('editTransportId').value;
+                    const name = document.getElementById('newTransportName').value;
+                    const data = { name, price_net: parseFloat(document.getElementById('newTransportPrice').value)||0 };
+                    if(id) await window.fsUpdateTransport(id, data); else await window.fsAddTransport(data);
+                    window.toggleForm('transport-form-container');
+                }
+
+                Swal.fire({toast:true, position:'top-end', icon:'success', title:'Guardado', showConfirmButton:false, timer:1500});
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', err.message, 'error');
+            } finally {
+                window.hideLoading();
             }
         }
 
@@ -957,7 +967,7 @@
             else if(type === 'transport') window.fsDeleteTransport(id);
         }
 
-        // --- COTIZACIÓN LOGIC ---
+        // --- COTIZACIÓN LOGIC (Same as before but ensures image URLs are used) ---
         
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('arrivalDate').valueAsDate = new Date();
@@ -966,9 +976,19 @@
             if(document.getElementById('hotel-options-wrapper').children.length===0) window.addOptionGroup();
         });
 
+        window.updateDatalistSource = () => {
+            window.populateCatalogDropdowns();
+        }
+
         window.populateCatalogDropdowns = () => {
             const dl = document.getElementById('dl-tours-global');
-            if(dl) dl.innerHTML = window.catalogTours.map(t => `<option value="${t.name}">Neto: S/.${t.price_net}</option>`).join('');
+            const type = document.getElementById('addItemType').value;
+            
+            if (type === 'tour') {
+                dl.innerHTML = window.catalogTours.map(t => `<option value="${t.name}">Neto: S/.${t.price_net}</option>`).join('');
+            } else {
+                dl.innerHTML = window.catalogTransports.map(t => `<option value="${t.name}">Neto: S/.${t.price_net}</option>`).join('');
+            }
         }
 
         window.checkTourMatch = (input) => {
@@ -980,20 +1000,20 @@
         window.addTourToSelection = () => {
             const input = document.getElementById('catalogToursInput');
             const val = input.value;
+            const typeSelector = document.getElementById('addItemType').value;
+            
             if(!val) return;
             
-            // Try to find by ID (set by checkMatch) or by Name match
             let item = null;
             if(input.dataset.selectedId) {
-                // Check both lists
                 item = window.catalogTours.find(t => t.id == input.dataset.selectedId);
                 if(!item) item = window.catalogTransports.find(t => t.id == input.dataset.selectedId);
             } else {
+                // If typed manually, check match
                 item = window.catalogTours.find(t => t.name.toLowerCase() === val.toLowerCase());
                 if(!item) item = window.catalogTransports.find(t => t.name.toLowerCase() === val.toLowerCase());
             }
 
-            // Default for custom
             let tourData = {
                 id: Date.now(),
                 name: val,
@@ -1001,22 +1021,25 @@
                 desc: 'Item personalizado',
                 startTime: '',
                 endTime: '',
-                type: 'tour'
+                type: typeSelector // Use selector value as default
             };
 
             if(item) {
-                // Copy properties to avoid reference issues
                 tourData = { 
                     ...item,
-                    type: item.startTime !== undefined ? 'tour' : 'transport',
+                    type: item.startTime !== undefined ? 'tour' : 'transport', // If found in catalog, use its type (tours have startTime)
                     startTime: item.startTime || '',
                     endTime: item.endTime || ''
                 };
             }
             
+            // Force type if override intended? usually logic above handles it.
+            // If item found, stick to what it is. If custom, stick to selector.
+            if(!item) tourData.type = typeSelector;
+
             window.currentSelectedTours.push({
                 ...tourData, 
-                price_net: tourData.price_net, // Editable copy
+                price_net: tourData.price_net, 
                 customMargin: 20, 
                 dayLabel: "Día 1" 
             });
@@ -1034,27 +1057,25 @@
             
             const arrival = new Date(document.getElementById('arrivalDate').value);
             const departure = new Date(document.getElementById('departureDate').value);
-            // Cálculo corregido: Días Totales = (Diferencia + 1)
             const diffDays = Math.ceil(Math.abs(departure - arrival) / (1000 * 60 * 60 * 24)) + 1; 
             
             let dayOptions = '';
             for(let i=1; i <= diffDays; i++) dayOptions += `<option value="Día ${i}">Día ${i}</option>`;
             if(!dayOptions) dayOptions = `<option value="Día 1">Día 1</option>`;
 
-            let total = 0;
             window.currentSelectedTours.forEach((t, i) => {
                 const sell = parseFloat(t.price_net) + parseFloat(t.customMargin || 0);
-                total += sell;
                 
                 let currentDayOptions = dayOptions;
                 if(!dayOptions.includes(`value="${t.dayLabel}"`)) currentDayOptions += `<option value="${t.dayLabel}" selected>${t.dayLabel}</option>`;
                 
                 const icon = t.type === 'transport' ? '<i class="fas fa-bus text-purple-500 mr-1"></i>' : '<i class="fas fa-flag text-teal-500 mr-1"></i>';
+                const typeLabel = t.type === 'transport' ? '<span class="text-[9px] bg-purple-100 text-purple-700 px-1 rounded ml-1">Trans</span>' : '';
 
                 tbody.innerHTML += `
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-2"><select class="w-full text-xs border rounded p-1 bg-white" onchange="window.currentSelectedTours[${i}].dayLabel=this.value; window.renderSelectedToursTable()">${currentDayOptions.replace(`value="${t.dayLabel}"`, `value="${t.dayLabel}" selected`)}</select></td>
-                        <td class="p-2 text-xs font-semibold text-gray-700">${icon}${t.name}</td>
+                        <td class="p-2 text-xs font-semibold text-gray-700">${icon}${t.name}${typeLabel}</td>
                         <td class="p-2 text-center"><input type="number" value="${t.price_net}" class="w-14 border text-center text-xs p-1" onchange="window.currentSelectedTours[${i}].price_net=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
                         <td class="p-2 text-center"><input type="number" value="${t.customMargin}" class="w-12 border text-center text-xs p-1" placeholder="S/." onchange="window.currentSelectedTours[${i}].customMargin=parseFloat(this.value); window.renderSelectedToursTable(); window.updateFinancialDashboard()"></td>
                         <td class="p-2 font-bold text-teal-700 text-xs text-center">S/.${sell.toFixed(2)}</td>
@@ -1064,15 +1085,11 @@
             window.updateFinancialDashboard();
         }
 
-        window.populateLocationSelect = (select) => {
-            // Se usa el datalist global ahora
-        }
-
         window.addOptionGroup = () => {
             const wrapper = document.getElementById('hotel-options-wrapper');
             if(wrapper.children.length>=4) return Swal.fire('Límite 4 opciones', '', 'warning');
             const letter = String.fromCharCode(65 + wrapper.children.length);
-            const cardId = Date.now() + Math.random().toString(36).substr(2, 5); // ID único para datalist local si se usara
+            const cardId = Date.now() + Math.random().toString(36).substr(2, 5);
             
             const div = document.createElement('div');
             div.className = "bg-gray-50 p-4 rounded-lg border border-gray-200 relative shadow-sm option-card group";
@@ -1086,12 +1103,9 @@
 
                 <div class="bg-white p-3 rounded border border-dashed border-gray-300">
                     <p class="text-[10px] font-bold text-gray-400 uppercase mb-2">Agregar Alojamiento</p>
-                    
                     <input type="text" class="form-input text-xs py-1 h-8 mb-2 location-input" list="dl-locations-global" placeholder="Filtrar por Ubicación (Opcional)" onchange="window.filterHotelsByLocation(this)">
-                    
                     <input type="text" class="form-input text-xs py-1 h-8 mb-2 add-hotel-input" list="dl-hotels-global" placeholder="Buscar o Escribir Hotel" oninput="window.checkHotelMatch(this)">
                     
-                    <!-- Datalist para habitaciones, dinámico por JS -->
                     <input type="text" class="form-input text-xs py-1 h-8 mb-2 add-room-input" list="dl-rooms-${cardId}" placeholder="Tipo Habitación" oninput="window.checkRoomMatch(this)">
                     <datalist id="dl-rooms-${cardId}"></datalist>
                     
@@ -1131,7 +1145,6 @@
             const val = locInput.value;
             const dl = document.getElementById('dl-hotels-global');
             if(!val) {
-                // Reset to all
                 dl.innerHTML = window.catalogHotels.map(h => `<option value="${h.name}">${h.zone}</option>`).join('');
                 return;
             }
@@ -1143,20 +1156,15 @@
             const val = input.value;
             const card = input.closest('.option-card');
             const roomDatalist = card.querySelector('datalist');
-            roomDatalist.innerHTML = ''; // Clear prev options
+            roomDatalist.innerHTML = '';
             
-            // Find matched hotel by name
             const hotel = window.catalogHotels.find(h => h.name === val);
-            
             if (hotel) {
                 input.dataset.selectedId = hotel.id;
-                // Populate rooms
                 if (hotel.rooms) {
                     roomDatalist.innerHTML = hotel.rooms.map(r => `<option value="${r.name}">Cap: ${r.capacity} | S/.${r.price}</option>`).join('');
                 }
-            } else {
-                delete input.dataset.selectedId; // It's a custom hotel
-            }
+            } else { delete input.dataset.selectedId; }
         }
 
         window.checkRoomMatch = (input) => {
@@ -1164,7 +1172,6 @@
             const card = input.closest('.option-card');
             const hotelInput = card.querySelector('.add-hotel-input');
             const hotelId = hotelInput.dataset.selectedId;
-            
             if (hotelId) {
                 const hotel = window.catalogHotels.find(h => h.id == hotelId);
                 const room = hotel.rooms.find(r => r.name === val);
@@ -1182,7 +1189,6 @@
             const nights = parseInt(wrapper.querySelector('.add-nights').value) || 1;
             const price = parseFloat(wrapper.querySelector('.add-net-price').value) || 0;
             const margin = parseFloat(wrapper.querySelector('.add-margin').value) || 0;
-            
             const saleTotal = (price + margin) * nights * qty;
             wrapper.querySelector('.add-total-display').innerText = `S/.${saleTotal.toFixed(2)}`;
         }
@@ -1197,7 +1203,7 @@
             const nights = wrapper.querySelector('.add-nights').value;
             const price = wrapper.querySelector('.add-net-price').value;
             const margin = wrapper.querySelector('.add-margin').value;
-            const hotelId = wrapper.querySelector('.add-hotel-input').dataset.selectedId || ''; // Empty if custom
+            const hotelId = wrapper.querySelector('.add-hotel-input').dataset.selectedId || '';
 
             if(!hotelName || !roomName) return Swal.fire('Faltan datos', 'Ingrese hotel y habitación', 'warning');
 
@@ -1220,7 +1226,6 @@
                     <div class="text-[10px] bg-gray-100 px-1 rounded">${qty} Hab. x ${nights} Ns</div>
                     <div class="text-xs font-bold text-teal-700">Venta: S/.${saleTotal.toFixed(2)}</div>
                 </div>
-                <!-- Hidden fields for saving/editing -->
                 <input type="hidden" class="seg-hotel-id" value="${hotelId}">
                 <input type="hidden" class="seg-hotel-name" value="${hotelName}">
                 <input type="hidden" class="seg-room-name" value="${roomName}">
@@ -1231,8 +1236,6 @@
             `;
             container.appendChild(div);
             window.updateOptionTotals(btn);
-            
-            // Clear specific fields but maybe leave hotel/dates for convenience? Let's clear room mostly.
             wrapper.querySelector('.add-room-input').value = '';
             wrapper.querySelector('.add-net-price').value = '0';
         }
@@ -1240,9 +1243,8 @@
         window.editHotelSegment = (btn) => {
             const row = btn.closest('.segment-row');
             const card = btn.closest('.option-card');
-            const wrapper = card.querySelector('.bg-white.p-3'); // The add form
+            const wrapper = card.querySelector('.bg-white.p-3'); 
 
-            // Extract data
             const hName = row.querySelector('.seg-hotel-name').value;
             const hId = row.querySelector('.seg-hotel-id').value;
             const rName = row.querySelector('.seg-room-name').value;
@@ -1251,12 +1253,9 @@
             const price = row.querySelector('.seg-net').value;
             const margin = row.querySelector('.seg-margin').value;
 
-            // Populate form
             const hInput = wrapper.querySelector('.add-hotel-input');
             hInput.value = hName;
             if(hId) hInput.dataset.selectedId = hId; else delete hInput.dataset.selectedId;
-            
-            // Trigger match to populate room datalist
             window.checkHotelMatch(hInput); 
 
             wrapper.querySelector('.add-room-input').value = rName;
@@ -1265,35 +1264,38 @@
             wrapper.querySelector('.add-net-price').value = price;
             wrapper.querySelector('.add-margin').value = margin;
 
-            // Update preview numbers
             window.calculateSegmentPreview(hInput);
-
-            // Remove the row (it's "moved" to edit area)
             row.remove();
-            window.updateOptionTotals(wrapper); // Recalc totals after removal
+            window.updateOptionTotals(wrapper); 
         }
 
-        window.updateOptionTotals = (elem) => {
-            window.updateFinancialDashboard();
-        }
+        window.updateOptionTotals = (elem) => { window.updateFinancialDashboard(); }
 
-        // --- DASHBOARD FINANCIERO ---
         window.updateFinancialDashboard = () => {
             const tbody = document.getElementById('financial-body');
             const pax = parseInt(document.getElementById('pax').value) || 1;
             
-            // Calcular Totales de Tours
             let toursNetoTotal = 0;
             let toursVentaTotal = 0;
+            let transportNetoTotal = 0;
+            let transportVentaTotal = 0;
             
             window.currentSelectedTours.forEach(t => {
-                toursNetoTotal += parseFloat(t.price_net);
-                toursVentaTotal += parseFloat(t.price_net) + parseFloat(t.customMargin || 0);
+                const neto = parseFloat(t.price_net);
+                const venta = neto + parseFloat(t.customMargin || 0);
+                
+                if (t.type === 'transport') {
+                    transportNetoTotal += neto;
+                    transportVentaTotal += venta;
+                } else {
+                    toursNetoTotal += neto;
+                    toursVentaTotal += venta;
+                }
             });
             
-            // Multiplicar por PAX (ya que los precios de tours suelen ser por persona)
-            const toursNetoGlobal = toursNetoTotal * pax;
-            const toursVentaGlobal = toursVentaTotal * pax;
+            // Tours are multiplied by pax, Transport is flat cost
+            const globalNeto = (toursNetoTotal * pax) + transportNetoTotal;
+            const globalVenta = (toursVentaTotal * pax) + transportVentaTotal;
 
             let html = '';
             const options = document.querySelectorAll('.option-card');
@@ -1313,9 +1315,8 @@
                     hotelVentaOption += parseFloat(row.dataset.sellTotal) || 0;
                 });
 
-                // Costo Operativo Total = Tours(Global) + Hoteles(Global)
-                const costoOp = toursNetoGlobal + hotelNetoOption;
-                const precioVenta = toursVentaGlobal + hotelVentaOption;
+                const costoOp = globalNeto + hotelNetoOption;
+                const precioVenta = globalVenta + hotelVentaOption;
                 const utilidad = precioVenta - costoOp;
                 const rentabilidad = precioVenta > 0 ? ((utilidad / precioVenta) * 100).toFixed(1) : 0;
 
@@ -1347,6 +1348,14 @@
                     <td class="p-2 font-mono text-xs text-blue-600">S/.${t.price_net}</td>
                     <td class="p-2 text-right"><button onclick="window.editCatalogItem('tour', '${t.id}')" class="text-blue-500"><i class="fas fa-edit"></i></button><button onclick="window.deleteCatalogItem('tour', '${t.id}')" class="text-red-500 ml-2"><i class="fas fa-trash"></i></button></td>
                 </tr>`).join('');
+
+            const transports = window.catalogTransports || [];
+            document.getElementById('catalog-transports-table-body').innerHTML = transports.map(t => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-2">${t.name}</td>
+                    <td class="p-2 font-mono text-xs text-purple-600">S/.${t.price_net}</td>
+                    <td class="p-2 text-right"><button onclick="window.editCatalogItem('transport', '${t.id}')" class="text-blue-500"><i class="fas fa-edit"></i></button><button onclick="window.deleteCatalogItem('transport', '${t.id}')" class="text-red-500 ml-2"><i class="fas fa-trash"></i></button></td>
+                </tr>`).join('');
         }
 
         window.renderHistoryTable = () => {
@@ -1362,7 +1371,6 @@
                         <button onclick="window.fsDeleteProposal('${p.id}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>`).join('');
-            
             document.getElementById('empty-history-msg').classList.toggle('hidden', proposals.length > 0);
         }
 
@@ -1375,9 +1383,15 @@
             const agent = document.getElementById('agentName').value;
 
             let totalToursVenta = 0;
+            let totalTransportVenta = 0;
+
             const tourList = window.currentSelectedTours.map(t => {
                 const venta = parseFloat(t.price_net) + parseFloat(t.customMargin||0);
-                totalToursVenta += venta;
+                if(t.type === 'transport') {
+                    totalTransportVenta += venta;
+                } else {
+                    totalToursVenta += venta;
+                }
                 return {...t, price_public: venta};
             });
             tourList.sort((a,b) => {
@@ -1403,17 +1417,16 @@
                     const net = row.querySelector('.seg-net').value;
                     const margin = row.querySelector('.seg-margin').value;
                     
-                    // Lookup hotel to get the right room image & amenities
                     const hotel = window.catalogHotels.find(x => x.id == hId) || {name: '?', img: placeholderImg, amenities: []};
-                    
-                    // Logic to find specific room image
                     let displayImg = placeholderImg;
+                    if(hotel.img && hotel.img.startsWith('http')) displayImg = hotel.img;
+
+                    // Logic to find specific room image
                     if(hotel && hotel.rooms) {
                         const roomObj = hotel.rooms.find(r => r.name == rName);
-                        if(roomObj && roomObj.img) displayImg = roomObj.img;
+                        if(roomObj && roomObj.img && roomObj.img.startsWith('http')) displayImg = roomObj.img;
                     }
 
-                    // ADDED: Amenity display logic
                     const amenitiesList = hotel.amenities ? hotel.amenities.map(a => `<span class="text-[9px] text-gray-500 bg-gray-100 px-1 py-0.5 rounded mr-1 mb-1 inline-block border border-gray-200">${a}</span>`).join('') : '';
 
                     segmentsHtml += `
@@ -1427,14 +1440,13 @@
                                 <div class="mb-1"><p class="text-[9px] text-gray-400 uppercase tracking-wide">Hotel</p><p class="text-xs font-bold text-gray-800 leading-tight">${hName}</p></div>
                                 <div class="mb-1"><p class="text-[9px] text-gray-400 uppercase tracking-wide">Habitación</p><p class="text-xs text-gray-700">${rName}</p></div>
                                 <div><span class="text-[9px] bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded border border-teal-100">${qty} ${qty > 1 ? 'Habs' : 'Hab'}</span></div>
-                                <!-- AMENITIES DISPLAY -->
                                 <div class="mt-2 flex flex-wrap">${amenitiesList}</div>
                             </div>
                         </div>`;
                     segments.push({id: hId, name: hName, room: rName, qty, nights: n, netPrice: net, margin: margin});
                 });
 
-                const grandTotalGroup = totalOptionSellGroup + (totalToursVenta * pax);
+                const grandTotalGroup = totalOptionSellGroup + (totalToursVenta * pax) + totalTransportVenta;
                 const grandTotalPP = grandTotalGroup / pax;
 
                 options.push({
@@ -1467,36 +1479,39 @@
             if(data.tours.length > 0) {
                 toursHtml = '<div class="space-y-3">';
                 data.tours.forEach(t => {
-                    // Formatear horario de manera flexible
                     let timeString = '';
                     if(t.startTime) timeString += t.startTime;
                     if(t.endTime) timeString += (timeString ? ' - ' : '') + t.endTime;
+                    
+                    const iconClass = t.type === 'transport' ? 'fas fa-bus text-purple-600' : 'fas fa-flag text-teal-600';
+                    const bgClass = t.type === 'transport' ? 'bg-purple-50 text-purple-800' : 'bg-teal-50 text-teal-800';
 
                     toursHtml += `
                         <div class="flex items-start p-3 border-b border-gray-100">
                             <div class="w-24 flex-shrink-0 pt-1">
-                                <span class="bg-teal-50 text-teal-800 text-[10px] font-bold px-2 py-1 rounded uppercase block text-center">${t.dayLabel}</span>
+                                <span class="${bgClass} text-[10px] font-bold px-2 py-1 rounded uppercase block text-center">${t.dayLabel}</span>
                             </div>
-                            <div class="ml-3">
-                                <div class="font-bold text-sm text-gray-800">${t.name}</div>
-                                ${timeString ? `<div class="text-xs font-bold text-teal-600 mt-0.5 flex items-center"><i class="far fa-clock mr-1"></i>${timeString}</div>` : ''}
-                                <div class="text-xs text-gray-500 mt-1">${t.desc}</div>
+                            <div class="ml-3 flex-grow">
+                                <div class="font-bold text-sm text-gray-800 flex items-center">
+                                    <i class="${iconClass} mr-2"></i> ${t.name}
+                                </div>
+                                ${timeString ? `<div class="text-xs font-bold text-gray-500 mt-0.5 flex items-center"><i class="far fa-clock mr-1"></i>${timeString}</div>` : ''}
+                                <div class="text-xs text-gray-500 mt-1">${t.desc || ''}</div>
                             </div>
                         </div>`;
                 });
                 toursHtml += '</div>';
             } else { toursHtml = '<p class="text-gray-400 italic text-xs p-4">Sin actividades extra.</p>'; }
 
-            // 2. Create Tour Details Section (New 4-Column Layout)
+            // 2. Create Tour Details Section
             let tourDetailsHtml = '';
-            if(data.tours.length > 0) {
-                // MODIFICADO: Grid de 1 columna para vista "rectangular extendida"
+            const onlyTours = data.tours.filter(t => t.type !== 'transport');
+            
+            if(onlyTours.length > 0) {
                 const tourGridClass = 'grid-cols-1'; 
-                
                 tourDetailsHtml = `<div class="grid ${tourGridClass} gap-6">`;
                 
-                data.tours.forEach(t => {
-                   // Helper for lists
+                onlyTours.forEach(t => {
                    const renderList = (items, icon, title, color) => {
                        if(!items || items.length === 0) return `<div class="text-[10px] text-gray-300 italic p-2">Sin datos de ${title.toLowerCase()}</div>`;
                        return `
@@ -1509,7 +1524,7 @@
                        `;
                    };
                    
-                   const img = t.img || placeholderImg;
+                   const img = (t.img && t.img.startsWith('http')) ? t.img : placeholderImg;
 
                    tourDetailsHtml += `
                     <div class="border rounded-lg overflow-hidden flex flex-col shadow-sm bg-white avoid-break">
@@ -1548,7 +1563,7 @@
             const docHtml = `
                 <div class="font-sans text-gray-800 bg-white">
                      <div class="bg-gray-900 text-white p-6 avoid-break">
-                        <!-- Título y Datos Principales (Personas/Duración) -->
+                        <!-- Título y Datos Principales -->
                         <div class="flex justify-between items-end border-b border-gray-700 pb-3 mb-6">
                             <h1 class="text-3xl font-bold text-teal-400 tracking-tight">PROPUESTA DE VIAJE</h1>
                             <div class="text-right">
@@ -1556,10 +1571,7 @@
                             </div>
                         </div>
                         
-                        <!-- HEADER REESTRUCTURADO 50% - 50% -->
                         <div class="grid grid-cols-2 gap-8 text-sm items-center">
-                            
-                            <!-- COLUMNA IZQUIERDA (50%): Cliente y Asesor -->
                             <div class="border-r border-gray-700 pr-6">
                                 <div class="mb-3">
                                     <p class="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-1">CLIENTE</p>
@@ -1569,26 +1581,20 @@
                                     <p class="text-teal-500 text-xs font-medium truncate"><span class="text-gray-500 text-[10px] uppercase tracking-wider font-bold mr-2">ASESOR:</span>${data.agent}</p>
                                 </div>
                             </div>
-
-                            <!-- COLUMNA DERECHA (50%): Personas, Llegada, Retorno -->
                             <div class="grid grid-cols-3 gap-4 text-center">
-                                <!-- Personas -->
                                 <div>
                                     <p class="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-1">PERSONAS</p>
                                     <p class="font-bold text-white text-lg tracking-wide bg-teal-900 rounded py-0.5 border border-teal-800 shadow-sm">${data.pax}</p>
                                 </div>
-                                <!-- Llegada -->
                                 <div class="border-l border-gray-700 pl-4">
                                     <p class="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-1">LLEGADA</p>
                                     <p class="font-bold text-white text-sm tracking-wide">${data.arrival}</p>
                                 </div>
-                                <!-- Retorno -->
                                 <div class="border-l border-gray-700 pl-4">
                                     <p class="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-1">RETORNO</p>
                                     <p class="font-bold text-white text-sm tracking-wide">${data.departure}</p>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                     
@@ -1603,9 +1609,10 @@
                         <div class="mb-8 avoid-break"><h2 class="text-lg font-bold text-gray-700 border-b-2 border-blue-500 inline-block mb-4">Itinerario de Actividades</h2><div class="border rounded-lg bg-white overflow-hidden">${toursHtml}</div></div>
 
                         <!-- 3. DETALLE TOURS -->
+                        ${onlyTours.length > 0 ? `
                         <div class="mb-8"><h2 class="text-lg font-bold text-gray-700 border-b-2 border-purple-500 inline-block mb-4">Detalles de Tours & Experiencias</h2>
                              ${tourDetailsHtml}
-                        </div>
+                        </div>` : ''}
 
                         <!-- 4. ALOJAMIENTO -->
                         <div class="mb-8"><h2 class="text-lg font-bold text-gray-700 border-b-2 border-teal-500 inline-block mb-4">Opciones de Alojamiento</h2>
@@ -1647,7 +1654,6 @@
                 p.options.forEach(opt => {
                     window.addOptionGroup();
                     const card = document.getElementById('hotel-options-wrapper').lastElementChild;
-                    // No top-level margin loading needed as it is per segment now
                     const container = card.querySelector('.hotel-segments-container');
                     if(opt.segments) {
                         opt.segments.forEach(seg => {
